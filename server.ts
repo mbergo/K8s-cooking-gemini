@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, ThinkingLevel, Modality } from "@google/genai";
 import dotenv from "dotenv";
@@ -12,6 +13,55 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Database persistence simulation (Simulating PostgreSQL Cloud SQL database)
+  const DB_FILE = path.join(process.cwd(), "conversations_db.json");
+
+  function loadDB() {
+    try {
+      if (fs.existsSync(DB_FILE)) {
+        const data = fs.readFileSync(DB_FILE, "utf-8");
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error("Failed to load db, resetting:", e);
+    }
+    return { sessions: [], messages: [] };
+  }
+
+  function saveDB(data: any) {
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Failed to save db:", e);
+    }
+  }
+
+  // Initialize DB with a default welcome session if empty
+  const initialDB = loadDB();
+  if (initialDB.sessions.length === 0) {
+    const defaultSessionId = "session_welcome";
+    initialDB.sessions.push({
+      id: defaultSessionId,
+      title: "Co-Pilot Welcome Session",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    initialDB.messages.push({
+      id: "msg_welcome",
+      sessionId: defaultSessionId,
+      role: "assistant",
+      content: `Hello Marcus! I am your **Gemini AI SRE & AI Compute Co-Pilot**, configured specifically for your upcoming Airbnb interview. 
+
+Ask me any deep systems, networking, scheduling, or SRE debugging questions. Here are a few recommended topics we can discuss:
+* **How does vLLM’s Paged Attention optimize GPU memory (VRAM)?**
+* **Explain how Karpenter handles multi-tenant GPU node provisioning.**
+* **What are the primary differences between a CUDA Out of Memory error and a Linux OOMKilled event?**
+* **How does GPUDirect RDMA or NVLink bypass the CPU during training?**`,
+      createdAt: new Date().toISOString()
+    });
+    saveDB(initialDB);
+  }
 
   // Initialize the Gemini SDK lazily to prevent crash on startup if API key is missing
   let aiClient: GoogleGenAI | null = null;
@@ -26,10 +76,72 @@ async function startServer() {
     return aiClient;
   }
 
-  // API Endpoint for the Gemini AI Infrastructure Co-Pilot
+  // GET: List all sessions (Cloud SQL persistent layer)
+  app.get("/api/sessions", (req, res) => {
+    try {
+      const db = loadDB();
+      const sessions = [...db.sessions].sort((a: any, b: any) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      res.json({ sessions });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to load sessions." });
+    }
+  });
+
+  // GET: Retrieve a single session's messages
+  app.get("/api/sessions/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const db = loadDB();
+      const session = db.sessions.find((s: any) => s.id === id);
+      if (!session) {
+        return res.status(404).json({ error: "Conversation session not found." });
+      }
+      const messages = db.messages.filter((m: any) => m.sessionId === id);
+      res.json({ session, messages });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch session messages." });
+    }
+  });
+
+  // POST: Create a new conversation session
+  app.post("/api/sessions", (req, res) => {
+    try {
+      const { title } = req.body;
+      const db = loadDB();
+      const newSession = {
+        id: "session_" + Math.random().toString(36).substring(2, 11),
+        title: title || "New Conversation",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      db.sessions.push(newSession);
+      saveDB(db);
+      res.json(newSession);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to create session." });
+    }
+  });
+
+  // DELETE: Delete a session and all its messages
+  app.delete("/api/sessions/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const db = loadDB();
+      db.sessions = db.sessions.filter((s: any) => s.id !== id);
+      db.messages = db.messages.filter((m: any) => m.sessionId !== id);
+      saveDB(db);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to delete session." });
+    }
+  });
+
+  // API Endpoint for the Gemini AI Infrastructure Co-Pilot (with Cloud SQL persistence)
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message, history, thinkingLevel = "LOW" } = req.body;
+      const { message, history, thinkingLevel = "LOW", sessionId } = req.body;
       if (!message) {
         return res.status(400).json({ error: "Message is required." });
       }
@@ -40,6 +152,32 @@ async function startServer() {
           error: "Gemini API key is not configured in the workspace settings. Please configure your API secrets."
         });
       }
+
+      // Find or create session
+      const db = loadDB();
+      let targetSessionId = sessionId;
+      let session = db.sessions.find((s: any) => s.id === targetSessionId);
+      
+      if (!session) {
+        targetSessionId = sessionId || "session_" + Math.random().toString(36).substring(2, 11);
+        session = {
+          id: targetSessionId,
+          title: "New Conversation",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        db.sessions.push(session);
+      }
+
+      // Add user message to persistent DB
+      const userMsg = {
+        id: "msg_" + Math.random().toString(36).substring(2, 11),
+        sessionId: targetSessionId,
+        role: "user" as const,
+        content: message,
+        createdAt: new Date().toISOString()
+      };
+      db.messages.push(userMsg);
 
       // Model and Reasoning selection logic:
       // - LITE: gemini-3.1-flash-lite (fast tasks)
@@ -70,25 +208,60 @@ Provide exceptionally professional, high-depth, causal, and direct systems answe
         modelName = "gemini-3.1-flash-lite";
       }
 
-      // Convert history
-      const contents = [
-        ...(history || []).map((msg: any) => ({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }]
-        })),
-        { role: "user", parts: [{ text: message }] }
-      ];
+      // Load session conversation history from DB for precise context
+      const sessionMessages = db.messages.filter((m: any) => m.sessionId === targetSessionId);
+      // Format history for the generateContent request
+      const contents = sessionMessages.map((msg: any) => ({
+        role: msg.role === "assistant" ? "model" as const : "user" as const,
+        parts: [{ text: msg.content }]
+      }));
 
+      // Generate content via Gemini
       const response = await client.models.generateContent({
         model: modelName,
         contents: contents,
         config: config
       });
 
-      res.json({
-        content: response.text,
+      const textResponse = response.text || "I was unable to generate a detailed response. Please try reframing your systems question.";
+
+      // Add assistant message to persistent DB
+      const assistantMsg = {
+        id: "msg_" + Math.random().toString(36).substring(2, 11),
+        sessionId: targetSessionId,
+        role: "assistant" as const,
+        content: textResponse,
         model: modelName,
-        thinking: thinkingLevel === "HIGH"
+        thinking: thinkingLevel === "HIGH",
+        createdAt: new Date().toISOString()
+      };
+      db.messages.push(assistantMsg);
+
+      // Auto-summarize session title dynamically if it is still default or empty
+      if (session.title === "New Conversation" || session.title.startsWith("New Chat")) {
+        try {
+          const titleResponse = await client.models.generateContent({
+            model: "gemini-3.1-flash-lite",
+            contents: `Generate a very short, professional 2 to 4 word title representing this technical question: "${message}". Avoid quotes, punctuation, or generic prefixes. Keep it under 25 characters.`,
+          });
+          if (titleResponse.text) {
+            session.title = titleResponse.text.trim().replace(/^["']|["']$/g, "").replace(/^Title:\s*/i, "");
+          }
+        } catch (e) {
+          session.title = message.substring(0, 24) + "...";
+        }
+      }
+
+      // Update timestamps
+      session.updatedAt = new Date().toISOString();
+      saveDB(db);
+
+      res.json({
+        content: textResponse,
+        model: modelName,
+        thinking: thinkingLevel === "HIGH",
+        sessionId: targetSessionId,
+        sessionTitle: session.title
       });
     } catch (error: any) {
       console.error("Gemini API Error:", error);

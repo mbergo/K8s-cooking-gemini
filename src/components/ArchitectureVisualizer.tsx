@@ -2,20 +2,40 @@ import React, { useState } from 'react';
 import { K8S_COMPONENTS } from '../types';
 import { Server, Shield, Activity, Network, Key, Database, Cpu, Zap, HelpCircle } from 'lucide-react';
 
+const COMPONENT_IMAGES: Record<string, string> = {
+  'api-server': '/src/assets/images/k8s_apiserver_1782855802520.jpg',
+  'etcd': '/src/assets/images/k8s_etcd_1782855812421.jpg',
+  'scheduler': '/src/assets/images/k8s_scheduler_1782855821493.jpg',
+  'kubelet': '/src/assets/images/k8s_kubelet_1782855831144.jpg',
+  'cni': '/src/assets/images/k8s_cni_1782855839492.jpg',
+  'csi': '/src/assets/images/k8s_csi_1782855850034.jpg'
+};
+
 export const ArchitectureVisualizer: React.FC = () => {
   const [selectedComponent, setSelectedComponent] = useState<string>('api-server');
 
   const comp = K8S_COMPONENTS[selectedComponent];
 
-  const getIcon = (id: string) => {
+  const getIcon = (id: string, className = "h-5 w-5") => {
+    const imageUrl = COMPONENT_IMAGES[id];
+    if (imageUrl) {
+      return (
+        <img
+          src={imageUrl}
+          alt={id}
+          referrerPolicy="no-referrer"
+          className={`${className} rounded-lg object-cover transition-all`}
+        />
+      );
+    }
     switch (id) {
-      case 'api-server': return <Server className="h-5 w-5" />;
-      case 'etcd': return <Database className="h-5 w-5 text-indigo-400" />;
-      case 'scheduler': return <Cpu className="h-5 w-5 text-purple-400" />;
-      case 'kubelet': return <Activity className="h-5 w-5 text-pink-400" />;
-      case 'cni': return <Network className="h-5 w-5 text-emerald-400" />;
-      case 'csi': return <Shield className="h-5 w-5 text-amber-400" />;
-      default: return <Server className="h-5 w-5" />;
+      case 'api-server': return <Server className={className} />;
+      case 'etcd': return <Database className={`${className} text-indigo-400`} />;
+      case 'scheduler': return <Cpu className={`${className} text-purple-400`} />;
+      case 'kubelet': return <Activity className={`${className} text-pink-400`} />;
+      case 'cni': return <Network className={`${className} text-emerald-400`} />;
+      case 'csi': return <Shield className={`${className} text-amber-400`} />;
+      default: return <Server className={className} />;
     }
   };
 
@@ -44,41 +64,41 @@ export const ArchitectureVisualizer: React.FC = () => {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setSelectedComponent('api-server')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
                     selectedComponent === 'api-server'
-                      ? 'bg-indigo-600/30 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
+                      ? 'bg-indigo-600/30 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white scale-[1.02]'
                       : 'bg-[#141727] border-[#2e354f] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
-                  <Server className="h-6 w-6 mb-2" />
+                  {getIcon('api-server', "h-12 w-12 mb-2 border border-violet-500/20 shadow-md")}
                   <span className="text-xs font-bold font-mono">kube-apiserver</span>
-                  <span className="text-[10px] text-slate-500 mt-1">Unified Gateway</span>
+                  <span className="text-[10px] text-slate-500 mt-1 font-sans">Unified Gateway</span>
                 </button>
 
                 <button
                   onClick={() => setSelectedComponent('etcd')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
                     selectedComponent === 'etcd'
-                      ? 'bg-indigo-600/30 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
+                      ? 'bg-indigo-600/30 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white scale-[1.02]'
                       : 'bg-[#141727] border-[#2e354f] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
-                  <Database className="h-6 w-6 mb-2" />
+                  {getIcon('etcd', "h-12 w-12 mb-2 border border-violet-500/20 shadow-md")}
                   <span className="text-xs font-bold font-mono">etcd</span>
-                  <span className="text-[10px] text-slate-500 mt-1">Consensus DB</span>
+                  <span className="text-[10px] text-slate-500 mt-1 font-sans">Consensus DB</span>
                 </button>
 
                 <button
                   onClick={() => setSelectedComponent('scheduler')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
                     selectedComponent === 'scheduler'
-                      ? 'bg-indigo-600/30 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
+                      ? 'bg-indigo-600/30 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white scale-[1.02]'
                       : 'bg-[#141727] border-[#2e354f] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
-                  <Cpu className="h-6 w-6 mb-2" />
+                  {getIcon('scheduler', "h-12 w-12 mb-2 border border-violet-500/20 shadow-md")}
                   <span className="text-xs font-bold font-mono">kube-scheduler</span>
-                  <span className="text-[10px] text-slate-500 mt-1">GPU Allocator</span>
+                  <span className="text-[10px] text-slate-500 mt-1 font-sans">GPU Allocator</span>
                 </button>
               </div>
             </div>
@@ -100,41 +120,41 @@ export const ArchitectureVisualizer: React.FC = () => {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setSelectedComponent('kubelet')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
                     selectedComponent === 'kubelet'
-                      ? 'bg-emerald-600/20 border-emerald-500 shadow-lg shadow-emerald-500/20 text-white'
+                      ? 'bg-emerald-600/20 border-emerald-500 shadow-lg shadow-emerald-500/20 text-white scale-[1.02]'
                       : 'bg-[#141727] border-[#2e354f] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
-                  <Activity className="h-6 w-6 mb-2" />
+                  {getIcon('kubelet', "h-12 w-12 mb-2 border border-emerald-500/20 shadow-md")}
                   <span className="text-xs font-bold font-mono">Kubelet</span>
-                  <span className="text-[10px] text-slate-500 mt-1">Node Agent</span>
+                  <span className="text-[10px] text-slate-500 mt-1 font-sans">Node Agent</span>
                 </button>
 
                 <button
                   onClick={() => setSelectedComponent('cni')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
                     selectedComponent === 'cni'
-                      ? 'bg-emerald-600/20 border-emerald-500 shadow-lg shadow-emerald-500/20 text-white'
+                      ? 'bg-emerald-600/20 border-emerald-500 shadow-lg shadow-emerald-500/20 text-white scale-[1.02]'
                       : 'bg-[#141727] border-[#2e354f] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
-                  <Network className="h-6 w-6 mb-2" />
+                  {getIcon('cni', "h-12 w-12 mb-2 border border-emerald-500/20 shadow-md")}
                   <span className="text-xs font-bold font-mono">CNI (Cilium)</span>
-                  <span className="text-[10px] text-slate-500 mt-1">eBPF Network</span>
+                  <span className="text-[10px] text-slate-500 mt-1 font-sans">eBPF Network</span>
                 </button>
 
                 <button
                   onClick={() => setSelectedComponent('csi')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
                     selectedComponent === 'csi'
-                      ? 'bg-emerald-600/20 border-emerald-500 shadow-lg shadow-emerald-500/20 text-white'
+                      ? 'bg-emerald-600/20 border-emerald-500 shadow-lg shadow-emerald-500/20 text-white scale-[1.02]'
                       : 'bg-[#141727] border-[#2e354f] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
-                  <Shield className="h-6 w-6 mb-2" />
+                  {getIcon('csi', "h-12 w-12 mb-2 border border-emerald-500/20 shadow-md")}
                   <span className="text-xs font-bold font-mono">CSI (gp3)</span>
-                  <span className="text-[10px] text-slate-500 mt-1">Mount Plugin</span>
+                  <span className="text-[10px] text-slate-500 mt-1 font-sans">Mount Plugin</span>
                 </button>
               </div>
 
@@ -169,14 +189,14 @@ export const ArchitectureVisualizer: React.FC = () => {
             <div className="space-y-5">
               {/* Header Title */}
               <div className="flex items-center gap-3 pb-3 border-b border-[#1e2338]">
-                <div className="p-2.5 bg-violet-600/10 rounded-xl text-violet-400">
-                  {getIcon(selectedComponent)}
+                <div className="p-1.5 bg-[#141727] rounded-2xl border border-[#2e354f]/50 shrink-0 shadow-lg">
+                  {getIcon(selectedComponent, "h-14 w-14")}
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-white text-base leading-tight">
                     {comp.name}
                   </h3>
-                  <span className="text-[10px] text-violet-400 font-bold uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-violet-400 font-bold uppercase tracking-wider font-mono mt-1 block">
                     {comp.category.replace('-', ' ')}
                   </span>
                 </div>

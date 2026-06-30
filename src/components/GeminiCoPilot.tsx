@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { jsPDF } from "jspdf";
 import { 
   Send, 
   Sparkles, 
@@ -13,7 +14,13 @@ import {
   Radio, 
   CircleDot, 
   PhoneOff, 
-  CornerDownLeft 
+  CornerDownLeft,
+  History,
+  Plus,
+  Trash2,
+  Download,
+  Check,
+  MessageSquare
 } from 'lucide-react';
 
 interface Message {
@@ -28,23 +35,18 @@ interface GeminiCoPilotProps {
 }
 
 export const GeminiCoPilot: React.FC<GeminiCoPilotProps> = ({ onClose }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: `Hello Marcus! I am your **Gemini AI SRE & AI Compute Co-Pilot**, configured specifically for your upcoming Airbnb interview. 
-
-Ask me any deep systems, networking, scheduling, or SRE debugging questions. Here are a few recommended topics we can discuss:
-* **How does vLLM’s Paged Attention optimize GPU memory (VRAM)?**
-* **Explain how Karpenter handles multi-tenant GPU node provisioning.**
-* **What are the primary differences between a CUDA Out of Memory error and a Linux OOMKilled event?**
-* **How does GPUDirect RDMA or NVLink bypass the CPU during training?**`
-    }
-  ]);
-  
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [thinkingLevel, setThinkingLevel] = useState<'LITE' | 'LOW' | 'HIGH'>('LOW');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Cloud SQL Sim (Local Persistence) States
+  const [sessions, setSessions] = useState<{ id: string; title: string; updatedAt: string }[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'chat' | 'history'>('chat');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
 
   // Audio Transcription States
   const [isRecordingMic, setIsRecordingMic] = useState(false);
@@ -71,6 +73,94 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
     scrollToBottom();
   }, [messages, loading, voiceTranscripts]);
 
+  // Load persistent sessions on mount
+  useEffect(() => {
+    fetchSessions(true);
+  }, []);
+
+  const fetchSessions = async (selectLatest = true) => {
+    try {
+      const res = await fetch('/api/sessions');
+      const data = await res.json();
+      if (data.sessions && data.sessions.length > 0) {
+        setSessions(data.sessions);
+        if (selectLatest) {
+          const latestSession = data.sessions[0];
+          setActiveSessionId(latestSession.id);
+          fetchSessionMessages(latestSession.id);
+        }
+      } else {
+        // Create default session if none exist
+        await handleCreateNewSession("Co-Pilot Welcome Session");
+      }
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+    }
+  };
+
+  const fetchSessionMessages = async (sessionId: string) => {
+    setSessionLoading(true);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`);
+      const data = await res.json();
+      if (data.messages) {
+        setMessages(data.messages);
+      }
+    } catch (err) {
+      console.error("Failed to load session messages:", err);
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  const handleCreateNewSession = async (title = "New Conversation") => {
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      const newSession = await res.json();
+      if (newSession && newSession.id) {
+        setSessions(prev => [newSession, ...prev]);
+        setActiveSessionId(newSession.id);
+        setMessages([]);
+        setViewMode('chat');
+        return newSession;
+      }
+    } catch (err) {
+      console.error("Failed to create session:", err);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this conversation session?")) return;
+    try {
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE'
+      });
+      const remainingSessions = sessions.filter(s => s.id !== sessionId);
+      setSessions(remainingSessions);
+      if (activeSessionId === sessionId) {
+        if (remainingSessions.length > 0) {
+          setActiveSessionId(remainingSessions[0].id);
+          fetchSessionMessages(remainingSessions[0].id);
+        } else {
+          handleCreateNewSession();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+    }
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    fetchSessionMessages(sessionId);
+    setViewMode('chat');
+  };
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -84,8 +174,9 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
 
     if (!textToSend) setInput('');
 
-    const newMessages = [...messages, { role: 'user', content: messageText }];
-    setMessages(newMessages as any);
+    // Pre-insert user message locally
+    const userMsg: Message = { role: 'user', content: messageText };
+    setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
     try {
@@ -94,7 +185,7 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageText,
-          history: messages.slice(1), // Omit the system greeting for cleaner history
+          sessionId: activeSessionId,
           thinkingLevel
         }),
       });
@@ -102,6 +193,29 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Failed to communicate with the co-pilot.');
+      }
+
+      // Update active session metadata & sort
+      if (data.sessionId) {
+        setActiveSessionId(data.sessionId);
+        setSessions(prev => {
+          const idx = prev.findIndex(s => s.id === data.sessionId);
+          if (idx > -1) {
+            const updated = [...prev];
+            updated[idx] = {
+              ...updated[idx],
+              title: data.sessionTitle || updated[idx].title,
+              updatedAt: new Date().toISOString()
+            };
+            return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          } else {
+            return [{
+              id: data.sessionId,
+              title: data.sessionTitle || "New Conversation",
+              updatedAt: new Date().toISOString()
+            }, ...prev];
+          }
+        });
       }
 
       setMessages((prev) => [
@@ -384,13 +498,191 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
     setVoiceConnected(false);
   };
 
-  const clearHistory = () => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: `History cleared. I'm ready for another deep-dive question!`
+  const clearHistory = async () => {
+    if (!confirm("Are you sure you want to clear current session history? This will delete all messages in this session.")) return;
+    try {
+      await fetch(`/api/sessions/${activeSessionId}`, {
+        method: 'DELETE'
+      });
+      // Create a fresh session
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: "Fresh Conversation" })
+      });
+      const newSession = await res.json();
+      if (newSession && newSession.id) {
+        setSessions(prev => [newSession, ...prev.filter(s => s.id !== activeSessionId)]);
+        setActiveSessionId(newSession.id);
+        setMessages([
+          {
+            role: 'assistant',
+            content: `History cleared. I'm ready for another deep-dive question!`
+          }
+        ]);
       }
-    ]);
+    } catch (err) {
+      console.error("Failed to clear history:", err);
+    }
+  };
+
+  const handleExportHTML = () => {
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    const sessionTitle = activeSession ? activeSession.title : "Kubernetes AI Compute Interview Prep";
+    let htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${sessionTitle} - Export</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #0f111a;
+      color: #e2e8f0;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 24px;
+      color: #ffffff;
+      border-bottom: 2px solid #2e354f;
+      padding-bottom: 10px;
+      margin-bottom: 5px;
+    }
+    .meta {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 30px;
+    }
+    .message {
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid #2e354f30;
+    }
+    .user {
+      background-color: #1a1e36;
+      border-left: 4px solid #6366f1;
+    }
+    .assistant {
+      background-color: #111322;
+      border-left: 4px solid #10b981;
+    }
+    .role {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .user .role { color: #818cf8; }
+    .assistant .role { color: #34d399; }
+    .content {
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .model-badge {
+      font-size: 10px;
+      color: #475569;
+      margin-top: 10px;
+      display: inline-block;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <h1>${sessionTitle}</h1>
+  <div class="meta">Exported from Kubernetes AI SRE Co-Pilot on: ${new Date().toLocaleString()}</div>
+  
+  \${messages.map(m => \`
+    <div class="message \${m.role}">
+      <div class="role">\${m.role === 'user' ? 'Marcus' : 'Gemini SRE Architect'}</div>
+      <div class="content">\${m.content}</div>
+      \${m.model ? \`<div class="model-badge">Model: \${m.model}</div>\` : ''}
+    </div>
+  \`).join('')}
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `\${sessionTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_export.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const handleExportPDF = () => {
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    const sessionTitle = activeSession ? activeSession.title : "Kubernetes AI Compute Interview Prep";
+    const doc = new jsPDF();
+    let y = 20;
+    const margin = 20;
+    const width = doc.internal.pageSize.getWidth() - (2 * margin);
+    const height = doc.internal.pageSize.getHeight();
+
+    // Document Title
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(sessionTitle, margin, y);
+    y += 8;
+
+    // Subtitle / Date
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 110, 130);
+    doc.text(`SRE Co-Pilot Export • \${new Date().toLocaleString()}`, margin, y);
+    y += 14;
+
+    messages.forEach((msg) => {
+      // Avoid page overflows early
+      if (y > height - 30) {
+        doc.addPage();
+        y = 20;
+      }
+
+      // Draw Badge
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(10);
+      if (msg.role === 'user') {
+        doc.setTextColor(99, 102, 241); // indigo
+        doc.text("USER (Marcus):", margin, y);
+      } else {
+        doc.setTextColor(16, 185, 129); // emerald
+        doc.text("GEMINI CO-PILOT:", margin, y);
+      }
+      y += 6;
+
+      // Clean simple replacements for display in standard Helvetica
+      const cleanText = msg.content
+        .replace(/\\*\\*(.*?)\\*\\*/g, "$1")
+        .replace(/\\*(.*?)\\*/g, "$1")
+        .replace(/\\`(.*?)\\`/g, "$1");
+
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 70);
+
+      const splitLines = doc.splitTextToSize(cleanText, width);
+      splitLines.forEach((line: string) => {
+        if (y > height - 20) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, margin, y);
+        y += 5.5;
+      });
+
+      y += 6; // separator spacing between logs
+    });
+
+    doc.save(`\${sessionTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_export.pdf`);
+    setShowExportMenu(false);
   };
 
   const suggestions = [
@@ -409,6 +701,45 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
           <h3 className="font-display font-bold text-white text-sm">Gemini Compute Co-Pilot</h3>
         </div>
         <div className="flex items-center gap-1">
+          {/* View Mode Switching Button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'chat' ? 'history' : 'chat')}
+            title={viewMode === 'chat' ? "Saved Conversations" : "Return to active chat"}
+            className={`p-1.5 rounded-md hover:bg-[#1f233b] transition-colors relative ${viewMode === 'history' ? 'bg-[#1f233b] text-violet-400' : 'text-slate-400 hover:text-white'}`}
+          >
+            <History className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Export Dropdown Trigger */}
+          {viewMode === 'chat' && !isVoiceMode && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                title="Export conversation logs"
+                className={`p-1.5 rounded-md hover:bg-[#1f233b] transition-colors ${showExportMenu ? 'bg-[#1f233b] text-indigo-400' : 'text-slate-400 hover:text-white'}`}
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-[#2e354f]/60 bg-[#111322] p-1.5 shadow-2xl z-50 animate-fade-in text-[11px] font-sans">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider px-2 py-1 border-b border-[#2e354f]/15 mb-1">Export Logs</p>
+                  <button
+                    onClick={handleExportHTML}
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#1f233b] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="font-bold text-indigo-400 font-mono">HTML</span> Web Archive
+                  </button>
+                  <button
+                    onClick={handleExportPDF}
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#1f233b] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="font-bold text-emerald-400 font-mono">PDF</span> SRE Document
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Real-time Voice Conversations Button (Live API) */}
           <button
             onClick={toggleVoiceMode}
@@ -439,8 +770,66 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
         </div>
       </div>
 
-      {!isVoiceMode ? (
+      {viewMode === 'history' ? (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#090b14]">
+          <div className="flex items-center justify-between border-b border-[#2e354f]/20 pb-3">
+            <h4 className="font-display font-bold text-white text-xs uppercase tracking-wider">Conversation History</h4>
+            <button
+              onClick={() => handleCreateNewSession("New Conversation")}
+              className="text-[10px] font-bold bg-violet-600/10 hover:bg-violet-600 text-violet-400 hover:text-white border border-violet-500/20 rounded-lg px-2.5 py-1.5 flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" /> Start New Chat
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => handleSelectSession(session.id)}
+                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                  activeSessionId === session.id
+                    ? 'bg-[#181b2e] border-violet-500/40 text-white shadow-md shadow-violet-600/5'
+                    : 'bg-[#101221]/40 border-[#2e354f]/10 text-slate-400 hover:bg-[#121527] hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2 max-w-[80%]">
+                  <MessageSquare className={`h-4 w-4 shrink-0 ${activeSessionId === session.id ? 'text-violet-400' : 'text-slate-500'}`} />
+                  <div className="truncate">
+                    <span className="text-xs font-medium block truncate">{session.title}</span>
+                    <span className="text-[9px] text-slate-500 font-mono block mt-0.5">
+                      {new Date(session.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={(e) => handleDeleteSession(session.id, e)}
+                  title="Delete chat session"
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : !isVoiceMode ? (
         <>
+          {/* Active Session Badge */}
+          <div className="px-3 py-1.5 bg-[#101221] border-b border-[#2e354f]/15 flex items-center justify-between text-[11px] font-sans">
+            <div className="flex items-center gap-1.5 text-slate-400 truncate max-w-[70%]">
+              <span className="font-bold text-violet-400 shrink-0">Session:</span>
+              <span className="text-slate-300 font-medium truncate">{sessions.find(s => s.id === activeSessionId)?.title || "New Chat"}</span>
+            </div>
+            <button 
+              onClick={() => setViewMode('history')} 
+              className="text-[10px] text-violet-400 hover:text-violet-300 font-bold hover:underline shrink-0"
+            >
+              Switch Session
+            </button>
+          </div>
+
           {/* Model Selection and Thinking Mode */}
           <div className="p-3 border-b border-[#2e354f]/30 bg-[#0d0f1c] flex items-center justify-between text-[11px] font-sans">
             <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Orchestrator Mode</span>
@@ -484,31 +873,44 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
 
           {/* Messages Window */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex flex-col max-w-[85%] rounded-2xl p-3.5 ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-br-none ml-auto shadow-md shadow-violet-600/10'
-                    : 'bg-[#141727] text-slate-300 rounded-bl-none border border-[#2e354f]/30'
-                } animate-fade-in`}
-              >
-                {msg.thinking && msg.role === 'assistant' && (
-                  <div className="flex items-center gap-1 text-[9px] text-violet-400 font-bold tracking-wider mb-2 uppercase font-mono border-b border-[#2e354f]/25 pb-1">
-                    <Brain className="h-3 w-3 animate-pulse" />
-                    High Thinking Process Executed
-                  </div>
-                )}
-                <div className="text-xs leading-relaxed space-y-2 whitespace-pre-wrap font-sans">
-                  {msg.content}
-                </div>
-                {msg.model && (
-                  <span className="text-[9px] text-slate-500 font-mono mt-2 self-end uppercase">
-                    via {msg.model.replace('models/', '')}
-                  </span>
-                )}
+            {sessionLoading ? (
+              <div className="flex flex-col items-center justify-center h-48 space-y-2 text-slate-500 text-xs">
+                <RefreshCw className="h-6 w-6 animate-spin text-violet-500" />
+                <span>Syncing conversations with Cloud SQL simulation...</span>
               </div>
-            ))}
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-center px-4 space-y-2 text-slate-500 text-xs font-sans">
+                <MessageSquare className="h-8 w-8 text-slate-600" />
+                <p className="font-bold text-slate-400">Empty Conversation</p>
+                <p className="max-w-[180px] leading-relaxed">Type your first doubt below or select a recommended scenario to begin.</p>
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col max-w-[85%] rounded-2xl p-3.5 ${
+                    msg.role === 'user'
+                      ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-br-none ml-auto shadow-md shadow-violet-600/10'
+                      : 'bg-[#141727] text-slate-300 rounded-bl-none border border-[#2e354f]/30'
+                  } animate-fade-in`}
+                >
+                  {msg.thinking && msg.role === 'assistant' && (
+                    <div className="flex items-center gap-1 text-[9px] text-violet-400 font-bold tracking-wider mb-2 uppercase font-mono border-b border-[#2e354f]/25 pb-1">
+                      <Brain className="h-3 w-3 animate-pulse" />
+                      High Thinking Process Executed
+                    </div>
+                  )}
+                  <div className="text-xs leading-relaxed space-y-2 whitespace-pre-wrap font-sans">
+                    {msg.content}
+                  </div>
+                  {msg.model && (
+                    <span className="text-[9px] text-slate-500 font-mono mt-2 self-end uppercase">
+                      via {msg.model.replace('models/', '')}
+                    </span>
+                  )}
+                </div>
+              ))
+            )}
             {loading && (
               <div className="flex items-center gap-2.5 text-xs text-slate-400 bg-[#141727]/80 rounded-2xl p-3.5 max-w-[80%] border border-[#2e354f]/30 animate-pulse">
                 <RefreshCw className="h-4 w-4 animate-spin text-emerald-400" />
@@ -519,7 +921,7 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
           </div>
 
           {/* Suggestions List */}
-          {messages.length === 1 && (
+          {messages.length <= 1 && !sessionLoading && (
             <div className="p-3 bg-[#0a0c14] border-t border-[#1a1c2a]">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1 font-sans">
                 <HelpCircle className="h-3.5 w-3.5 text-violet-400" /> Suggested Doubts &amp; Scenarios
@@ -529,7 +931,7 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
                   <button
                     key={idx}
                     onClick={() => handleSend(s)}
-                    className="text-[11px] text-slate-400 hover:text-slate-200 text-left px-2.5 py-2 rounded-xl bg-[#111322] hover:bg-[#1a1e35] border border-[#2e354f]/30 transition-all font-sans"
+                    className="text-[11px] text-slate-400 hover:text-slate-200 text-left px-2.5 py-2 rounded-xl bg-[#111322] hover:bg-[#1a1e35] border border-[#2e354f]/30 transition-all font-sans cursor-pointer"
                   >
                     {s}
                   </button>
@@ -561,7 +963,7 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
                   type="button"
                   onClick={isRecordingMic ? stopRecording : startRecording}
                   title={isRecordingMic ? "Stop recording & transcribe" : "Record audio doubt & transcribe"}
-                  className={`p-1.5 rounded-lg transition-all ${
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                     isRecordingMic 
                       ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -577,7 +979,7 @@ Ask me any deep systems, networking, scheduling, or SRE debugging questions. Her
 
               <button
                 onClick={() => handleSend()}
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl p-2.5 hover:from-violet-500 hover:to-indigo-500 transition-all shadow-md shadow-violet-600/20 shrink-0"
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl p-2.5 hover:from-violet-500 hover:to-indigo-500 transition-all shadow-md shadow-violet-600/20 shrink-0 cursor-pointer"
               >
                 <Send className="h-4 w-4" />
               </button>

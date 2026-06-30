@@ -81,6 +81,7 @@ export const ClassroomMeet: React.FC = () => {
   const [coursework, setCoursework] = useState<ClassroomCoursework[]>([]);
   const [students, setStudents] = useState<ClassroomStudent[]>([]);
   const [classroomTab, setClassroomTab] = useState<'coursework' | 'students'>('coursework');
+  const [showQuickGuide, setShowQuickGuide] = useState<boolean>(true);
 
   // Lab Sync States
   const [selectedLab, setSelectedLab] = useState<string>('karpenter-gpu');
@@ -320,6 +321,104 @@ export const ClassroomMeet: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Quick-Start Guide Overlay Modal */}
+      {showQuickGuide && (
+        <div className="fixed inset-0 bg-[#06070c]/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#0f111a] border border-[#2e354f]/50 rounded-3xl max-w-2xl w-full p-8 shadow-2xl relative overflow-hidden space-y-6">
+            
+            {/* Ambient Background Glows */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full font-mono uppercase tracking-wider">
+                    Feature Integration Guide
+                  </span>
+                </div>
+                <h3 className="font-display font-bold text-xl text-white tracking-tight">
+                  Classroom Export &amp; Backup Guide
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowQuickGuide(false)}
+                className="text-slate-400 hover:text-white text-xs bg-slate-800/40 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 transition-all cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-gradient-to-r from-violet-500/20 via-[#2e354f]/30 to-transparent" />
+
+            {/* Content Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-[#121524]/60 border border-[#2e354f]/30 space-y-2.5">
+                <div className="h-8 w-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <GraduationCap className="h-4.5 w-4.5 text-violet-400" />
+                </div>
+                <h4 className="text-xs font-bold text-white">1. Secure Firebase Link</h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Sign in using Google Auth integrated with **Firebase Authentication** (top right). This links your GKE Masterclass student profile and syncs live grades seamlessly.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#121524]/60 border border-[#2e354f]/30 space-y-2.5">
+                <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                  <Cpu className="h-4.5 w-4.5 text-indigo-400" />
+                </div>
+                <h4 className="text-xs font-bold text-white">2. Open Co-Pilot Sidebar</h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Open the **Gemini AI Co-Pilot** from the navigation bar. Ask technical systems, SRE debugging, or lab coursework questions to prepare for your class.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#121524]/60 border border-[#2e354f]/30 space-y-2.5">
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <CheckCircle className="h-4.5 w-4.5 text-emerald-400" />
+                </div>
+                <h4 className="text-xs font-bold text-white">3. Persistent Session Storage</h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Every conversation session is stored securely in our **Cloud SQL backend**. Use the History tab to browse, rename, or restore old study chats anytime.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#121524]/60 border border-[#2e354f]/30 space-y-2.5">
+                <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <BookOpen className="h-4.5 w-4.5 text-amber-400" />
+                </div>
+                <h4 className="text-xs font-bold text-white">4. PDF &amp; HTML Chat Export</h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Click the **Download** button in the Co-Pilot panel to instantly export your SRE training logs. Submit these files directly as completion proofs for coursework grades!
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom Info Alert */}
+            <div className="p-3.5 rounded-xl bg-violet-600/5 border border-violet-500/20 flex gap-2.5 items-start">
+              <Info className="h-4 w-4 text-violet-400 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                <strong className="text-white">Note for Students:</strong> Your exported documents include precise details of models used (e.g., Gemini Flash), thinking steps, and specific UTC SRE timestamps, making them perfect study archives.
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-[10px] text-slate-500 font-mono">Masterclass Automation Engine v1.0</span>
+              <button 
+                onClick={() => setShowQuickGuide(false)}
+                className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-violet-600/25 cursor-pointer"
+              >
+                Got it, let's learn!
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Tab Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-b border-[#2e354f]/40 pb-6">
         <div className="space-y-2">
@@ -341,6 +440,14 @@ export const ClassroomMeet: React.FC = () => {
 
         {/* Authentication Controls */}
         <div className="shrink-0 flex items-center gap-3">
+          <button
+            onClick={() => setShowQuickGuide(true)}
+            className="text-xs font-bold px-3.5 py-2.5 rounded-xl bg-[#141727] hover:bg-[#1f233b] text-slate-300 hover:text-white border border-[#2e354f]/50 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-violet-400 animate-pulse" />
+            Quick-Start Guide
+          </button>
+
           {!needsAuth && user ? (
             <div className="flex items-center gap-3 bg-[#0d0f1a] border border-[#2e354f]/50 px-4 py-2 rounded-xl">
               <div className="flex items-center gap-2">
