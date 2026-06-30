@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tab } from '../types';
 import { Sparkles, Terminal, Activity, Layers, Cpu, Compass, Calculator, BookOpen, HelpCircle, ArrowRight, ShieldCheck, Heart, Server, Zap } from 'lucide-react';
+import { GPUClusterMetrics } from './GPUClusterMetrics';
 
 interface OverviewProps {
   setActiveTab: (tab: Tab) => void;
@@ -97,6 +98,11 @@ export const Overview: React.FC<OverviewProps> = ({ setActiveTab }) => {
             Designed for high performance.
           </div>
         </div>
+      </div>
+
+      {/* Real-time Cluster GPU Telemetry Monitor Section */}
+      <div className="rounded-3xl border border-[#2e354f]/30 bg-[#111322]/20 p-6 shadow-xl backdrop-blur-sm">
+        <GPUClusterMetrics />
       </div>
 
       {/* Navigation Cards Grid */}
