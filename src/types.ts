@@ -1,6 +1,7 @@
 export type Tab =
   | 'overview'
   | 'architecture'
+  | 'cluster-map'
   | 'scheduler'
   | 'gpu-stack'
   | 'lifecycle'

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tab } from '../types';
-import { Sparkles, Terminal, Activity, Layers, Cpu, Compass, Calculator, BookOpen, HelpCircle, ArrowRight, ShieldCheck, Heart, Server, Zap } from 'lucide-react';
+import { Sparkles, Terminal, Activity, Layers, Cpu, Compass, Calculator, BookOpen, HelpCircle, ArrowRight, ShieldCheck, Heart, Server, Zap, Globe } from 'lucide-react';
 import { GPUClusterMetrics } from './GPUClusterMetrics';
 
 interface OverviewProps {
@@ -199,6 +199,23 @@ export const Overview: React.FC<OverviewProps> = ({ setActiveTab }) => {
             </div>
             <div className="mt-4 flex items-center text-xs text-amber-400 font-medium group-hover:translate-x-1 transition-transform">
               Estimate parameters <ArrowRight className="size-3 ml-1" />
+            </div>
+          </div>
+
+          {/* Card 7: Global Cluster Map */}
+          <div
+            onClick={() => setActiveTab('cluster-map')}
+            className="group rounded-xl bg-[#111322] border border-[#2e354f]/50 hover:border-violet-500/50 p-5 cursor-pointer transition-all hover:translate-y-[-2px] flex flex-col justify-between"
+          >
+            <div>
+              <div className="p-2 bg-violet-500/10 text-violet-400 rounded-lg w-fit mb-3">
+                <Globe className="size-5" />
+              </div>
+              <h4 className="font-display text-md font-medium text-slate-100 mb-1">Global Cluster Map</h4>
+              <p className="text-xs text-slate-400">Explore global network latency, power usage effectiveness, and dynamic multi-region inference routing.</p>
+            </div>
+            <div className="mt-4 flex items-center text-xs text-violet-400 font-medium group-hover:translate-x-1 transition-transform">
+              Simulate WAN routing <ArrowRight className="size-3 ml-1" />
             </div>
           </div>
         </div>

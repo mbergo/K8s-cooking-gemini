@@ -12,6 +12,7 @@ import { CloudComparer } from './components/CloudComparer';
 import { InterviewPrep } from './components/InterviewPrep';
 import { GeminiCoPilot } from './components/GeminiCoPilot';
 import { ClassroomMeet } from './components/ClassroomMeet';
+import { ClusterMap } from './components/ClusterMap';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -23,6 +24,8 @@ export default function App() {
         return <Overview setActiveTab={setActiveTab} />;
       case 'architecture':
         return <ArchitectureVisualizer />;
+      case 'cluster-map':
+        return <ClusterMap />;
       case 'scheduler':
         return <SchedulerSandbox />;
       case 'gpu-stack':

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tab } from '../types';
-import { BookOpen, HelpCircle, Activity, LayoutGrid, Terminal, Calculator, Layers, Cpu, Compass, GraduationCap } from 'lucide-react';
+import { BookOpen, HelpCircle, Activity, LayoutGrid, Terminal, Calculator, Layers, Cpu, Compass, GraduationCap, Globe } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: Tab;
@@ -18,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems: { tab: Tab; label: string; icon: any }[] = [
     { tab: 'overview', label: 'Dashboard', icon: LayoutGrid },
     { tab: 'architecture', label: 'Cluster Topology', icon: Compass },
+    { tab: 'cluster-map', label: 'Global Cluster Map', icon: Globe },
     { tab: 'scheduler', label: 'Scheduler Sandbox', icon: Layers },
     { tab: 'gpu-stack', label: 'GPU Execution Stack', icon: Cpu },
     { tab: 'lifecycle', label: 'AI Request Lifecycle', icon: Activity },
