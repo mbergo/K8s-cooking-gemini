@@ -1,6 +1,6 @@
 {
   "name": "Kubernetes AI Compute Masterclass",
   "description": "An interactive deep-dive masterclass and cookbook covering Kubernetes architecture, GPU scheduling, CUDA internals, AI serving pipelines, and production debugging at scale.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -11,6 +11,7 @@ import { SreCalculator } from './components/SreCalculator';
 import { CloudComparer } from './components/CloudComparer';
 import { InterviewPrep } from './components/InterviewPrep';
 import { GeminiCoPilot } from './components/GeminiCoPilot';
+import { ClassroomMeet } from './components/ClassroomMeet';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -36,6 +37,8 @@ export default function App() {
         return <CloudComparer />;
       case 'qa':
         return <InterviewPrep />;
+      case 'classroom-meet':
+        return <ClassroomMeet />;
       default:
         return <Overview setActiveTab={setActiveTab} />;
     }

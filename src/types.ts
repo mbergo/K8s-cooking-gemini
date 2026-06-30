@@ -7,7 +7,8 @@ export type Tab =
   | 'troubleshooting'
   | 'calculator'
   | 'comparison'
-  | 'qa';
+  | 'qa'
+  | 'classroom-meet';
 
 export interface ComponentInfo {
   name: string;

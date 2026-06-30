@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tab } from '../types';
-import { BookOpen, HelpCircle, Activity, LayoutGrid, Terminal, Calculator, Layers, Cpu, Compass } from 'lucide-react';
+import { BookOpen, HelpCircle, Activity, LayoutGrid, Terminal, Calculator, Layers, Cpu, Compass, GraduationCap } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: Tab;
@@ -25,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { tab: 'calculator', label: 'Capacity Calculator', icon: Calculator },
     { tab: 'comparison', label: 'Cloud Comparative', icon: BookOpen },
     { tab: 'qa', label: 'Interview Masterclass', icon: HelpCircle },
+    { tab: 'classroom-meet', label: 'Classroom & Meet', icon: GraduationCap },
   ];
 
   return (

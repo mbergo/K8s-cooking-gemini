@@ -85,7 +85,7 @@ export const Overview: React.FC<OverviewProps> = ({ setActiveTab }) => {
             <p className="text-xs text-slate-400 leading-relaxed">
               Airbnb operates a massive GPU fleet supporting search ranking, listing translation, fraud detection, and customer service. You will be evaluated on your ability to:
             </p>
-            <ul data-start="4740" data-end="4818" class="mt-3 space-y-2 text-xs text-slate-300 list-disc pl-5">
+            <ul className="mt-3 space-y-2 text-xs text-slate-300 list-disc pl-5">
               <li>Manage high-capacity multi-node GPU clusters (A100s, H100s) on AWS and GCP.</li>
               <li>Implement low-latency inference pipelines (continuous batching, speculative decoding).</li>
               <li>Isolate multi-tenant workloads while maintaining cost efficiency &amp; zero-VRAM leakage.</li>

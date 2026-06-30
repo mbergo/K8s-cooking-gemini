@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GPU_STACK } from '../types';
 import { Cpu, Zap, ArrowRight, Layers, HelpCircle, Radio, Network } from 'lucide-react';
+import { CudaMatrix } from './CudaMatrix';
 
 export const GPUStackExplorer: React.FC = () => {
   const [selectedLayerIndex, setSelectedLayerIndex] = useState<number>(0);
@@ -221,6 +222,9 @@ export const GPUStackExplorer: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* CUDA Compatibility Matrix Section */}
+      <CudaMatrix />
     </div>
   );
 };
