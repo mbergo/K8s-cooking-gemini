@@ -1102,6 +1102,130 @@ export const ClusterMap: React.FC = () => {
                     </span>
                   )}
 
+                  {/* Detailed Kubernetes SRE Popover Tooltip */}
+                  <div className={`absolute bottom-6 ${
+                    dc.coordinates.x < 25 
+                      ? 'left-0 translate-x-0' 
+                      : dc.coordinates.x > 75 
+                        ? 'right-0 -translate-x-full' 
+                        : 'left-1/2 -translate-x-1/2'
+                  } w-64 bg-[#060810]/98 border border-[#2e354f] rounded-2xl p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.8)] backdrop-blur-md transition-all duration-200 origin-bottom scale-90 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 group-hover:pointer-events-auto z-50 text-left space-y-2.5`}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-[#2e354f]/40 pb-2">
+                      <div>
+                        <div className="text-[10px] font-bold text-violet-400 font-mono flex items-center gap-1 uppercase tracking-wider">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          k8s-{dc.id}
+                        </div>
+                        <div className="text-[9px] text-slate-400 font-sans font-medium">{dc.name}</div>
+                      </div>
+                      <span className="text-[8px] font-mono bg-[#1c2035]/60 text-indigo-300 border border-[#2e354f]/30 px-1.5 py-0.5 rounded uppercase font-semibold">
+                        v1.28-GKE
+                      </span>
+                    </div>
+
+                    {/* GPU details */}
+                    <div className="text-[8px] font-mono text-slate-500 flex justify-between items-center bg-[#090b14]/50 p-1 rounded border border-[#2e354f]/15">
+                      <span className="text-slate-400 font-bold uppercase">GPU CLUSTER:</span>
+                      <span className="text-slate-300 truncate max-w-[130px]" title={dc.gpus}>
+                        {dc.gpus}
+                      </span>
+                    </div>
+
+                    {/* Utilization Bars */}
+                    <div className="space-y-2">
+                      {/* CPU Utilization */}
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between text-[9px] font-mono">
+                          <span className="text-slate-400 flex items-center gap-1">
+                            <Cpu className="h-2.5 w-2.5 text-slate-500" /> CPU UTIL
+                          </span>
+                          <span className="text-slate-300 font-bold">
+                            {Math.min(98, Math.floor(dc.activeWorkload * 0.85 + 5))}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-[#2e354f]/25">
+                          <div 
+                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                            style={{ width: `${Math.min(98, Math.floor(dc.activeWorkload * 0.85 + 5))}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* GPU Utilization */}
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between text-[9px] font-mono">
+                          <span className="text-slate-400 flex items-center gap-1">
+                            <Activity className="h-2.5 w-2.5 text-slate-500" /> GPU UTIL
+                          </span>
+                          <span className={`font-bold ${dc.activeWorkload > 80 ? 'text-rose-400' : dc.activeWorkload > 50 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {dc.activeWorkload}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-[#2e354f]/25">
+                          <div 
+                            className={`h-full bg-gradient-to-r transition-all duration-500 ${
+                              dc.activeWorkload > 80 
+                                ? 'from-rose-500 to-pink-500' 
+                                : dc.activeWorkload > 50 
+                                  ? 'from-amber-500 to-orange-500' 
+                                  : 'from-emerald-500 to-teal-500'
+                            }`}
+                            style={{ width: `${dc.activeWorkload}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-[#2e354f]/25">
+                      <div className="bg-[#090b14]/40 p-1.5 rounded border border-[#2e354f]/15">
+                        <div className="text-[7px] font-mono text-slate-500 uppercase tracking-wider">Memory Util</div>
+                        <div className="text-[10px] font-mono font-bold text-slate-300">
+                          {Math.min(95, Math.floor(dc.activeWorkload * 0.75 + 15))}%
+                        </div>
+                      </div>
+                      <div className="bg-[#090b14]/40 p-1.5 rounded border border-[#2e354f]/15">
+                        <div className="text-[7px] font-mono text-slate-500 uppercase tracking-wider">Nodes Active</div>
+                        <div className="text-[10px] font-mono font-bold text-slate-300">
+                          {dc.id === 'us-west-2' ? '64 / 64' : dc.id === 'sa-east-1' ? '16 / 16' : '32 / 32'}
+                        </div>
+                      </div>
+                      <div className="bg-[#090b14]/40 p-1.5 rounded border border-[#2e354f]/15">
+                        <div className="text-[7px] font-mono text-slate-500 uppercase tracking-wider">Running Pods</div>
+                        <div className="text-[10px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                          <Layers className="h-2.5 w-2.5 text-emerald-500" />
+                          {Math.floor(dc.activeWorkload * 0.4) + 16}
+                        </div>
+                      </div>
+                      <div className="bg-[#090b14]/40 p-1.5 rounded border border-[#2e354f]/15">
+                        <div className="text-[7px] font-mono text-slate-500 uppercase tracking-wider">Pending Pods</div>
+                        <div className={`text-[10px] font-mono font-bold flex items-center gap-1 ${
+                          dc.activeWorkload > 70 ? 'text-amber-400 animate-pulse' : 'text-slate-400'
+                        }`}>
+                          <RefreshCw className={`h-2.5 w-2.5 ${dc.activeWorkload > 70 ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+                          {dc.activeWorkload > 70 ? Math.floor((dc.activeWorkload - 70) / 4) + 1 : 0}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer PUE & Service Mesh */}
+                    <div className="flex items-center justify-between pt-1.5 text-[8px] font-mono border-t border-[#2e354f]/25">
+                      <div className="text-slate-500">
+                        PUE: <span className="text-indigo-400 font-semibold">{dc.pue}</span>
+                      </div>
+                      {serviceMeshEnabled ? (
+                        <div className="flex items-center gap-0.5 text-emerald-400 font-extrabold uppercase">
+                          <Lock className="h-2 w-2 text-emerald-400" /> mTLS Secure
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-0.5 text-amber-500/80 font-bold uppercase">
+                          <Sliders className="h-2 w-2" /> No Mesh
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Small Name tag */}
                   <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#121424] text-[8px] font-mono text-slate-300 px-1.5 py-0.5 rounded border border-[#2e354f]/50 whitespace-nowrap shadow-xl z-20 font-bold">
                     {dc.id}
