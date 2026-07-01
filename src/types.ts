@@ -2,6 +2,7 @@ export type Tab =
   | 'overview'
   | 'architecture'
   | 'cluster-map'
+  | 'airbnb-pipeline'
   | 'scheduler'
   | 'gpu-stack'
   | 'lifecycle'

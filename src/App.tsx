@@ -13,6 +13,7 @@ import { InterviewPrep } from './components/InterviewPrep';
 import { GeminiCoPilot } from './components/GeminiCoPilot';
 import { ClassroomMeet } from './components/ClassroomMeet';
 import { ClusterMap } from './components/ClusterMap';
+import { AirbnbPipelineSimulator } from './components/AirbnbPipelineSimulator';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -26,6 +27,8 @@ export default function App() {
         return <ArchitectureVisualizer />;
       case 'cluster-map':
         return <ClusterMap />;
+      case 'airbnb-pipeline':
+        return <AirbnbPipelineSimulator />;
       case 'scheduler':
         return <SchedulerSandbox />;
       case 'gpu-stack':

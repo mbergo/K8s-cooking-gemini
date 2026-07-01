@@ -181,6 +181,7 @@ export const ClusterMap: React.FC = () => {
     workload: number;
     timestamp: string;
     type: 'warning' | 'critical';
+    message?: string;
   }[]>([]);
 
   // INFERENCE MODE STATE
@@ -215,6 +216,29 @@ export const ClusterMap: React.FC = () => {
   const [selectedTargetDC, setSelectedTargetDC] = useState<DataCenter | null>(DATA_CENTERS[0]);
   const [serviceMeshEnabled, setServiceMeshEnabled] = useState<boolean>(false);
 
+  // POD MIGRATION STATE
+  const [activeMigrations, setActiveMigrations] = useState<{
+    id: string;
+    sourceDcId: string;
+    targetDcId: string;
+    progress: number;
+    podCount: number;
+  }[]>([]);
+
+  // Advance pod migration progress
+  useEffect(() => {
+    if (activeMigrations.length === 0) return;
+    const interval = setInterval(() => {
+      setActiveMigrations(prev => 
+        prev.map(m => {
+          if (m.progress >= 100) return m;
+          return { ...m, progress: Math.min(100, m.progress + 2) }; // Slower progress for visibility
+        }).filter(m => m.progress < 100)
+      );
+    }, 100);
+    return () => clearInterval(interval);
+  }, [activeMigrations.length]);
+
   // AIRBNB MULTI-CLOUD GITOPS & APACHE OSS STATE
   const [airbnbCase, setAirbnbCase] = useState<'pricing' | 'search' | 'reviews'>('pricing');
   const [activeCloud, setActiveCloud] = useState<'gcp' | 'aws' | 'azure'>('gcp');
@@ -235,6 +259,72 @@ export const ClusterMap: React.FC = () => {
     'asia-east-1<->us-west-2': 'none',
   });
   const [trainingLogs, setTrainingLogs] = useState<string[]>([]);
+
+  // OUTAGE SIMULATION
+  const simulateOutage = (dcId: string) => {
+    const dcName = datacenters.find(d => d.id === dcId)?.name || dcId;
+    setDatacenters(prev => prev.map(dc => dc.id === dcId ? { ...dc, healthy: false, activeWorkload: 0 } : dc));
+    
+    // Find healthy datacenters to migrate to
+    const healthyDCs = datacenters.filter(d => d.id !== dcId && d.healthy);
+    if (healthyDCs.length > 0) {
+      // Pick a random healthy DC
+      const targetDC = healthyDCs[Math.floor(Math.random() * healthyDCs.length)];
+      
+      setActiveMigrations(prev => [
+        ...prev,
+        {
+          id: `mig-${Date.now()}`,
+          sourceDcId: dcId,
+          targetDcId: targetDC.id,
+          progress: 0,
+          podCount: Math.floor(Math.random() * 50) + 20
+        }
+      ]);
+
+      // Alert SRE console
+      setTelemetryLogs(prev => [
+        `[CRITICAL] k8s-${dcId} OUTAGE detected. Evicting pods.`,
+        `[INFO] Re-routing traffic from ${dcId} to ${targetDC.id}`,
+        ...prev
+      ].slice(0, 50));
+      
+      setAlertsHistory(prev => [
+        {
+          id: `outage-${Date.now()}`,
+          dcId,
+          dcName,
+          workload: 0,
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'critical',
+          message: `SEVERE NODE OUTAGE DETECTED. Evacuating all active pods to k8s-${targetDC.id}.`
+        },
+        ...prev
+      ].slice(0, 15));
+    }
+  };
+
+  const restoreOutage = (dcId: string) => {
+    const dcName = datacenters.find(d => d.id === dcId)?.name || dcId;
+    setDatacenters(prev => prev.map(dc => dc.id === dcId ? { ...dc, healthy: true, activeWorkload: 40 } : dc));
+    setTelemetryLogs(prev => [
+      `[RECOVERY] k8s-${dcId} restored to HEALTHY status.`,
+      ...prev
+    ].slice(0, 50));
+    
+    setAlertsHistory(prev => [
+      {
+        id: `restore-${Date.now()}`,
+        dcId,
+        dcName,
+        workload: 40,
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'warning', // Displaying as warning to show recovery
+        message: `CLUSTER RECOVERY INITIATED. Node marked HEALTHY and ready for scheduling.`
+      },
+      ...prev
+    ].slice(0, 15));
+  };
 
   // Ticking workloads randomly (background simulation flavor)
   useEffect(() => {
@@ -1092,6 +1182,32 @@ export const ClusterMap: React.FC = () => {
               );
             })}
 
+            {/* Render Pod Migrations */}
+            {activeMigrations.map(migration => {
+              const sourceDC = datacenters.find(d => d.id === migration.sourceDcId);
+              const targetDC = datacenters.find(d => d.id === migration.targetDcId);
+              if (!sourceDC || !targetDC) return null;
+
+              const x = sourceDC.coordinates.x + (targetDC.coordinates.x - sourceDC.coordinates.x) * (migration.progress / 100);
+              const y = sourceDC.coordinates.y + (targetDC.coordinates.y - sourceDC.coordinates.y) * (migration.progress / 100);
+
+              return (
+                <div 
+                  key={migration.id}
+                  className="absolute z-40 flex items-center justify-center transition-all duration-100 pointer-events-none"
+                  style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
+                >
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500 border border-white"></span>
+                  </span>
+                  <span className="absolute -top-5 text-[8px] font-mono text-indigo-300 font-bold bg-[#060810]/90 px-1.5 py-0.5 rounded border border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.5)] whitespace-nowrap">
+                    {migration.podCount} PODS
+                  </span>
+                </div>
+              );
+            })}
+
             {/* Render Data Centers as pulsing SRE diamonds */}
             {activeMode !== 'airbnb' && datacenters.map(dc => {
               const isSelected = selectedDC === dc.id;
@@ -1104,7 +1220,8 @@ export const ClusterMap: React.FC = () => {
                 if (trainingStatus === 'stalled') nodeColorClass = 'bg-rose-500 animate-pulse';
                 else if (trainingStatus === 'waiting') nodeColorClass = 'bg-amber-500 animate-pulse';
               } else {
-                nodeColorClass = dc.activeWorkload > 80 ? 'bg-rose-500' : dc.activeWorkload > 50 ? 'bg-amber-500' : 'bg-emerald-500';
+                if (!dc.healthy) nodeColorClass = 'bg-rose-600 animate-pulse';
+                else nodeColorClass = dc.activeWorkload > 80 ? 'bg-rose-500' : dc.activeWorkload > 50 ? 'bg-amber-500' : 'bg-emerald-500';
               }
 
               return (
@@ -1286,7 +1403,7 @@ export const ClusterMap: React.FC = () => {
                     </div>
 
                     {/* Footer PUE & Service Mesh */}
-                    <div className="flex items-center justify-between pt-1.5 text-[8px] font-mono border-t border-[#2e354f]/25">
+                    <div className="flex items-center justify-between pt-1.5 text-[8px] font-mono border-t border-[#2e354f]/25 pb-1">
                       <div className="text-slate-500">
                         PUE: <span className="text-indigo-400 font-semibold">{dc.pue}</span>
                       </div>
@@ -1298,6 +1415,33 @@ export const ClusterMap: React.FC = () => {
                         <div className="flex items-center gap-0.5 text-amber-500/80 font-bold uppercase">
                           <Sliders className="h-2 w-2" /> No Mesh
                         </div>
+                      )}
+                    </div>
+                    
+                    {/* Outage Simulation Controls */}
+                    <div className="pt-1.5 border-t border-[#2e354f]/25">
+                      {dc.healthy ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            simulateOutage(dc.id);
+                          }}
+                          className="w-full py-1.5 text-[9px] font-mono font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded transition-colors flex justify-center items-center gap-1.5"
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          SIMULATE OUTAGE
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            restoreOutage(dc.id);
+                          }}
+                          className="w-full py-1.5 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded transition-colors flex justify-center items-center gap-1.5"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          RESTORE CLUSTER
+                        </button>
                       )}
                     </div>
                   </div>
@@ -2546,7 +2690,11 @@ export const ClusterMap: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-300 mt-0.5 font-sans leading-snug">
-                        GPU utilization reached <span className={alert.type === 'critical' ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>{alert.workload}%</span>, exceeding target budget limit of {gpuAlertThreshold}%.
+                        {alert.message ? (
+                          alert.message
+                        ) : (
+                          <>GPU utilization reached <span className={alert.type === 'critical' ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>{alert.workload}%</span>, exceeding target budget limit of {gpuAlertThreshold}%.</>
+                        )}
                       </p>
                     </div>
                   </div>

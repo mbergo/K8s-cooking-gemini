@@ -19,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { tab: 'overview', label: 'Dashboard', icon: LayoutGrid },
     { tab: 'architecture', label: 'Cluster Topology', icon: Compass },
     { tab: 'cluster-map', label: 'Global Cluster Map', icon: Globe },
+    { tab: 'airbnb-pipeline', label: 'Airbnb Pipeline', icon: Activity },
     { tab: 'scheduler', label: 'Scheduler Sandbox', icon: Layers },
     { tab: 'gpu-stack', label: 'GPU Execution Stack', icon: Cpu },
     { tab: 'lifecycle', label: 'AI Request Lifecycle', icon: Activity },
