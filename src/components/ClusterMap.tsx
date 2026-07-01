@@ -172,6 +172,17 @@ export const ClusterMap: React.FC = () => {
   const [datacenters, setDatacenters] = useState<DataCenter[]>(DATA_CENTERS);
   const [selectedDC, setSelectedDC] = useState<string>('us-east-1');
 
+  // GPU Threshold Notification State
+  const [gpuAlertThreshold, setGpuAlertThreshold] = useState<number>(75);
+  const [alertsHistory, setAlertsHistory] = useState<{
+    id: string;
+    dcId: string;
+    dcName: string;
+    workload: number;
+    timestamp: string;
+    type: 'warning' | 'critical';
+  }[]>([]);
+
   // INFERENCE MODE STATE
   const [userLoc, setUserLoc] = useState<string>('new-york');
   const [policy, setPolicy] = useState<'latency' | 'cost' | 'carbon'>('latency');
@@ -238,6 +249,43 @@ export const ClusterMap: React.FC = () => {
     }, 4500);
     return () => clearInterval(interval);
   }, []);
+
+  // Monitor GPU activeWorkload against gpuAlertThreshold to trigger visual alerts
+  useEffect(() => {
+    const activeBreaches = datacenters.filter(dc => dc.activeWorkload > gpuAlertThreshold);
+    if (activeBreaches.length === 0) return;
+
+    setAlertsHistory(prev => {
+      const now = Date.now();
+      const updated = [...prev];
+      let addedAny = false;
+
+      activeBreaches.forEach(dc => {
+        // Prevent spamming alerts within a 12-second window for the same cluster node
+        const isDuplicate = prev.some(
+          a => a.dcId === dc.id && (now - new Date(a.timestamp).getTime()) < 12000
+        );
+
+        if (!isDuplicate) {
+          updated.unshift({
+            id: `${dc.id}-${now}`,
+            dcId: dc.id,
+            dcName: dc.name,
+            workload: dc.activeWorkload,
+            timestamp: new Date().toLocaleTimeString(),
+            type: dc.activeWorkload > 85 ? 'critical' : 'warning',
+          });
+          addedAny = true;
+        }
+      });
+
+      if (addedAny) {
+        // Keep last 15 alerts to avoid buffer overload
+        return updated.slice(0, 15);
+      }
+      return prev;
+    });
+  }, [datacenters, gpuAlertThreshold]);
 
   // Live step ticker for Distributed AI Training
   useEffect(() => {
@@ -1070,6 +1118,19 @@ export const ClusterMap: React.FC = () => {
                   {isTargetDC && (
                     <span className="absolute -left-4 -top-4 h-11 w-11 rounded-full bg-indigo-500/30 animate-pulse border border-indigo-400/20" />
                   )}
+
+                  {/* GPU utilization exceeded alert rings */}
+                  {dc.activeWorkload > gpuAlertThreshold && (
+                    <>
+                      <span className="absolute -left-5 -top-5 h-10 w-10 rounded-full border border-rose-500 animate-ping opacity-60" style={{ animationDuration: '2s' }} />
+                      <span className="absolute -left-4.5 -top-4.5 h-9 w-9 rounded-full border border-rose-500/40 animate-pulse" />
+                      
+                      {/* Floating alert triangle badge */}
+                      <span className="absolute -top-7 -right-3 bg-rose-600 text-white border border-rose-400 rounded-full p-0.5 text-[8px] font-bold shadow-lg animate-bounce z-40">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                      </span>
+                    </>
+                  )}
                   
                   {/* Service Mesh Envoy Sidecar Proxy visualization */}
                   {activeMode === 'inference' && serviceMeshEnabled && activeHops.some(h => h.id === dc.id) && (
@@ -1114,7 +1175,9 @@ export const ClusterMap: React.FC = () => {
                     <div className="flex items-center justify-between border-b border-[#2e354f]/40 pb-2">
                       <div>
                         <div className="text-[10px] font-bold text-violet-400 font-mono flex items-center gap-1 uppercase tracking-wider">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${
+                            dc.activeWorkload > gpuAlertThreshold ? 'bg-rose-500' : 'bg-emerald-500'
+                          }`} />
                           k8s-{dc.id}
                         </div>
                         <div className="text-[9px] text-slate-400 font-sans font-medium">{dc.name}</div>
@@ -1123,6 +1186,19 @@ export const ClusterMap: React.FC = () => {
                         v1.28-GKE
                       </span>
                     </div>
+
+                    {/* GPU threshold alert notification within popover */}
+                    {dc.activeWorkload > gpuAlertThreshold && (
+                      <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-2 flex items-start gap-1.5 text-[9px] font-sans text-rose-300 animate-pulse">
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-extrabold uppercase text-[8px] tracking-wide">GPU Warning Alert</p>
+                          <p className="text-[8px] text-slate-300 leading-snug">
+                            Node cluster exceeds normal budget of {gpuAlertThreshold}%. Please adjust traffic policy.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* GPU details */}
                     <div className="text-[8px] font-mono text-slate-500 flex justify-between items-center bg-[#090b14]/50 p-1 rounded border border-[#2e354f]/15">
@@ -1404,7 +1480,7 @@ export const ClusterMap: React.FC = () => {
                 <Zap className="h-4 w-4 text-amber-400 animate-pulse" /> WAN Edge Routing Simulator
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
                 
                 {/* User Origin dropdown */}
                 <div className="space-y-1.5">
@@ -1491,6 +1567,26 @@ export const ClusterMap: React.FC = () => {
                     value={contextSize}
                     onChange={(e) => setContextSize(Number(e.target.value))}
                     className="w-full accent-violet-500 h-1 bg-[#0a0b12] rounded-lg appearance-none cursor-pointer mt-2"
+                  />
+                </div>
+
+                {/* GPU Alert Threshold slider */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 text-rose-400 animate-pulse" />
+                      Alert Limit
+                    </span>
+                    <span className="text-rose-400 font-bold">{gpuAlertThreshold}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="50"
+                    max="95"
+                    step="5"
+                    value={gpuAlertThreshold}
+                    onChange={(e) => setGpuAlertThreshold(Number(e.target.value))}
+                    className="w-full accent-rose-500 h-1 bg-[#0a0b12] rounded-lg appearance-none cursor-pointer mt-2"
                   />
                 </div>
 
@@ -1840,23 +1936,37 @@ export const ClusterMap: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Workload Telemetry Indicator */}
+                 {/* Workload Telemetry Indicator & Override Slider */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                    <span>GPU Cluster Utilization</span>
-                    <span className="font-mono text-white font-bold">{activeDC.activeWorkload}%</span>
+                    <span className="flex items-center gap-1">
+                      GPU Cluster Utilization
+                      <span className="text-[7px] text-indigo-400 font-mono font-bold uppercase">(Interactive Override)</span>
+                    </span>
+                    <span className={`font-mono font-bold ${
+                      activeDC.activeWorkload > gpuAlertThreshold ? 'text-rose-400 animate-pulse' : 'text-white'
+                    }`}>{activeDC.activeWorkload}%</span>
                   </div>
-                  <div className="w-full bg-[#0a0b12] h-2 rounded-full overflow-hidden border border-[#2e354f]/20">
-                    <div 
-                      className={`h-full transition-all duration-300 ${
-                        activeDC.activeWorkload > 80 
-                          ? 'bg-rose-500' 
-                          : activeDC.activeWorkload > 50 
-                          ? 'bg-amber-500' 
-                          : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${activeDC.activeWorkload}%` }}
-                    />
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={activeDC.activeWorkload}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setDatacenters(prev => prev.map(d => d.id === activeDC.id ? { ...d, activeWorkload: val } : d));
+                    }}
+                    className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-indigo-500 bg-[#0a0b12] border border-[#2e354f]/20`}
+                    style={{
+                      background: `linear-gradient(to right, ${
+                        activeDC.activeWorkload > 80 ? '#f43f5e' : activeDC.activeWorkload > 50 ? '#f59e0b' : '#10b981'
+                      } ${activeDC.activeWorkload}%, #0a0b12 ${activeDC.activeWorkload}%)`
+                    }}
+                  />
+                  <div className="flex justify-between text-[7px] text-slate-500 font-mono">
+                    <span>10% Low</span>
+                    <span>50% Med</span>
+                    <span>100% Peak</span>
                   </div>
                 </div>
 
@@ -2380,6 +2490,70 @@ export const ClusterMap: React.FC = () => {
 
             </div>
           )}
+
+          {/* REAL-TIME GPU ALERTS NOTIFICATION FEED */}
+          <div className="rounded-3xl border border-[#2e354f]/35 bg-[#101222]/80 p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2e354f]/25 pb-2">
+              <h3 className="font-display font-bold text-xs text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-rose-500 animate-pulse" /> Active GPU Alerts
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded">
+                  {alertsHistory.length} Total
+                </span>
+                {alertsHistory.length > 0 && (
+                  <button 
+                    onClick={() => setAlertsHistory([])}
+                    className="text-[9px] text-slate-500 hover:text-slate-300 font-mono underline cursor-pointer bg-transparent border-0"
+                  >
+                    Clear Feed
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {alertsHistory.length === 0 ? (
+              <div className="text-center py-6 text-slate-500 space-y-1">
+                <Shield className="h-5 w-5 text-emerald-500/70 mx-auto animate-pulse" />
+                <p className="text-xs font-semibold text-slate-300">All Clusters Secure</p>
+                <p className="text-[9px] text-slate-500 max-w-[220px] mx-auto">
+                  No GPU node active workload currently exceeds the {gpuAlertThreshold}% threshold.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-[160px] pr-1 scrollbar-thin">
+                {alertsHistory.map((alert) => (
+                  <div 
+                    key={alert.id}
+                    className={`p-2 rounded-xl border flex items-start gap-2.5 transition-all animate-fade-in ${
+                      alert.type === 'critical'
+                        ? 'bg-rose-500/10 border-rose-500/30'
+                        : 'bg-amber-500/5 border-amber-500/20'
+                    }`}
+                  >
+                    <div className={`p-1 rounded-lg mt-0.5 shrink-0 ${
+                      alert.type === 'critical' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-white">
+                          k8s-{alert.dcId}
+                        </span>
+                        <span className="text-[8px] text-slate-500 font-mono font-bold">
+                          {alert.timestamp}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-300 mt-0.5 font-sans leading-snug">
+                        GPU utilization reached <span className={alert.type === 'critical' ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>{alert.workload}%</span>, exceeding target budget limit of {gpuAlertThreshold}%.
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* SRE LIVE CONSOLE TERMINAL */}
           <div className="rounded-3xl border border-[#2e354f]/35 bg-[#090b14] p-5 space-y-3 font-mono text-xs flex flex-col h-[280px]">
