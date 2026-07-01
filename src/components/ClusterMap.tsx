@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Globe, Activity, Server, Zap, Cpu, Leaf, DollarSign, Clock, Play, ArrowRight, 
   ShieldAlert, Wifi, HelpCircle, Sliders, AlertTriangle, RefreshCw, PauseCircle, 
-  PlayCircle, XCircle 
+  PlayCircle, XCircle, GitBranch, Database, Cloud, Terminal, Layers
 } from 'lucide-react';
 
 interface DataCenter {
@@ -165,8 +165,8 @@ const ROUTING_TABLE: Record<string, Record<string, string[]>> = {
 };
 
 export const ClusterMap: React.FC = () => {
-  // Mode Tab: 'inference' or 'training'
-  const [activeMode, setActiveMode] = useState<'inference' | 'training'>('inference');
+  // Mode Tab: 'inference' or 'training' or 'airbnb'
+  const [activeMode, setActiveMode] = useState<'inference' | 'training' | 'airbnb'>('inference');
 
   // Shared state: Datacenters
   const [datacenters, setDatacenters] = useState<DataCenter[]>(DATA_CENTERS);
@@ -202,6 +202,14 @@ export const ClusterMap: React.FC = () => {
   ]);
   const [telemetryLogs, setTelemetryLogs] = useState<string[]>([]);
   const [selectedTargetDC, setSelectedTargetDC] = useState<DataCenter | null>(DATA_CENTERS[0]);
+
+  // AIRBNB MULTI-CLOUD GITOPS & APACHE OSS STATE
+  const [airbnbCase, setAirbnbCase] = useState<'pricing' | 'search' | 'reviews'>('pricing');
+  const [activeCloud, setActiveCloud] = useState<'gcp' | 'aws' | 'azure'>('gcp');
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'connections' | 'apache-oss'>('overview');
+  const [airbnbSimulating, setAirbnbSimulating] = useState<boolean>(false);
+  const [airbnbSimProgress, setAirbnbSimProgress] = useState<number>(0);
+  const [airbnbLogs, setAirbnbLogs] = useState<string[]>([]);
 
   // TRAINING MODE STATE
   const [isTraining, setIsTraining] = useState<boolean>(true);
@@ -290,6 +298,59 @@ export const ClusterMap: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [activeMode, isTraining, linkCongestions, trainingStep]);
+
+  // Run Airbnb GitOps Multi-Cloud and Apache OSS Pipeline Routing
+  const runAirbnbSimulation = () => {
+    if (airbnbSimulating) return;
+    setAirbnbSimulating(true);
+    setAirbnbSimProgress(0);
+    setAirbnbLogs([]);
+
+    const timestamp = () => `[${new Date().toLocaleTimeString()}]`;
+
+    const addLog = (msg: string, delay: number, progressValue: number) => {
+      setTimeout(() => {
+        setAirbnbLogs(prev => [...prev, `${timestamp()} ${msg}`]);
+        setAirbnbSimProgress(progressValue);
+      }, delay);
+    };
+
+    // Phase 1: GitOps Repo Push
+    addLog("GITOPS [SOURCE]: Airbnb code push detected on branch 'main'. Triggering automated dynamic pricing weights deploy.", 100, 10);
+    addLog("GITOPS [DECLARATION]: Declarative Helm/Kustomize manifest checked. Deploying to target AWS / GCP / Azure clusters.", 600, 20);
+
+    // Phase 2: Apache Airflow Orchestration
+    addLog("APACHE AIRFLOW: Triggered model validation and distribution DAG. Executing unit tests & checking GPU capacity.", 1100, 30);
+    addLog("APACHE AIRFLOW: Validated weights deployed. Pushing to multi-region cloud object storages (GCS / S3 / Azure Blob).", 1650, 45);
+
+    // Phase 3: Cloud Provider k8s deploy
+    const providerName = activeCloud.toUpperCase();
+    const k8sSvc = activeCloud === 'gcp' ? 'GKE (Google Kubernetes Engine)' : activeCloud === 'aws' ? 'EKS (Amazon Elastic Kubernetes Service)' : 'AKS (Azure Kubernetes Service)';
+    addLog(`${providerName}: Rolling update completed on ${k8sSvc}. GPU pods scaled up and ready.`, 2200, 58);
+
+    // Phase 4: Kafka ingestion & APISIX routing
+    const businessCaseDesc = airbnbCase === 'pricing' 
+      ? 'Dynamic Pricing Engine request' 
+      : airbnbCase === 'search' 
+      ? 'Vector Search Matcher request' 
+      : 'Review Summary Translation request';
+    addLog(`APACHE KAFKA: Guest clickstream captured. Stream serialized [Avro] and published to dynamic topic 'airbnb-realtime-events'.`, 2800, 70);
+    addLog(`APACHE APISIX: Enterprise API Gateway resolved dynamic load-balancing. Routing [${businessCaseDesc}] to the closest target hub.`, 3400, 80);
+
+    // Phase 5: Spark + Cassandra feature hydrator + inference
+    const gpuNode = activeCloud === 'gcp' ? 'GCP Cloud TPU v5e Node' : activeCloud === 'aws' ? 'AWS EC2 p5.48xlarge (NVIDIA H100)' : 'Azure NDv5 Tensor Node';
+    addLog("APACHE SPARK: Parallel feature pipeline prepared user demographic and historic search embeddings.", 4050, 88);
+    addLog("APACHE CASSANDRA: Dynamic feature lookup completed in 1.1ms. Transmitting tensors to model server.", 4600, 94);
+    addLog(`COMPUTE [${providerName}]: Dynamic forward pass execution on ${gpuNode} completed. Generating response tokens.`, 5200, 98);
+
+    // Phase 6: Delivered to guest
+    const userLocationName = USER_LOCATIONS.find(ul => ul.id === userLoc)?.name || 'New York';
+    addLog(`SUCCESS [AIRBNB]: Dynamic guest response delivered safely in ${userLocationName}! Total network hop-count: 6. Path latency RTT: ${140 + Math.floor(Math.random() * 45)}ms.`, 5800, 100);
+
+    setTimeout(() => {
+      setAirbnbSimulating(false);
+    }, 5900);
+  };
 
   // Run standard user inference prompt routing
   const runSimulation = () => {
@@ -471,6 +532,97 @@ export const ClusterMap: React.FC = () => {
     return 'computing';
   };
 
+  const selectedUserObj = USER_LOCATIONS.find(ul => ul.id === userLoc) || USER_LOCATIONS[0];
+  const cloudDC = activeCloud === 'gcp' ? DATA_CENTERS.find(d => d.id === 'us-west-2')! : activeCloud === 'aws' ? DATA_CENTERS.find(d => d.id === 'us-east-1')! : DATA_CENTERS.find(d => d.id === 'eu-west-1')!;
+
+  const AIRBNB_NODES = [
+    { 
+      id: 'gitops', 
+      name: 'GitOps (Airbnb Main Branch)', 
+      label: 'GitOps Source', 
+      coordinates: { x: 5, y: 15 }, 
+      icon: 'gitops', 
+      glowColor: 'rgba(239, 68, 68, 0.4)', 
+      color: '#ef4444', 
+      desc: 'Airbnb main codebase & pipeline configurations. Deploys declarative state automatically via continuous integration.' 
+    },
+    { 
+      id: 'airflow', 
+      name: 'Apache Airflow (DAG Workflow)', 
+      label: 'Airflow Scheduler', 
+      coordinates: { x: 14, y: 18 }, 
+      icon: 'airflow', 
+      glowColor: 'rgba(6, 182, 212, 0.4)', 
+      color: '#06b6d4', 
+      desc: 'Orchestrates machine learning pipeline stages, weights deployment, and unit testing runs on remote K8s pods.' 
+    },
+    { 
+      id: 'cloud', 
+      name: `${activeCloud.toUpperCase()} Cluster Node: ${cloudDC.name}`, 
+      label: `${activeCloud.toUpperCase()} Kubernetes Compute`, 
+      coordinates: cloudDC.coordinates, 
+      icon: 'cloud', 
+      glowColor: activeCloud === 'gcp' ? 'rgba(52, 211, 153, 0.4)' : activeCloud === 'aws' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(56, 189, 248, 0.4)', 
+      color: activeCloud === 'gcp' ? '#34d399' : activeCloud === 'aws' ? '#f59e0b' : '#38bdf8', 
+      desc: `Containerized inference host running specialized GPU nodes (${cloudDC.gpus}) powered by ${activeCloud === 'gcp' ? 'Vertex AI' : activeCloud === 'aws' ? 'Amazon SageMaker' : 'Azure Machine Learning'}.` 
+    },
+    { 
+      id: 'kafka', 
+      name: 'Apache Kafka Event Streams', 
+      label: 'Kafka Message Bus', 
+      coordinates: { x: 22, y: 28 }, 
+      icon: 'kafka', 
+      glowColor: 'rgba(245, 158, 11, 0.4)', 
+      color: '#f59e0b', 
+      desc: 'Ingests clickstream metrics and user booking/search query logs across Airbnb’s real-time events pipeline with high-throughput buffers.' 
+    },
+    { 
+      id: 'apisix', 
+      name: 'Apache APISIX Enterprise Gateway', 
+      label: 'APISIX Router Gateway', 
+      coordinates: { x: 26, y: 38 }, 
+      icon: 'apisix', 
+      glowColor: 'rgba(167, 139, 250, 0.4)', 
+      color: '#a78bfa', 
+      desc: 'High-performance API Gateway routing live user requests with advanced rate-limiting, TLS-offloading, and smart multi-cloud canary capabilities.' 
+    },
+    { 
+      id: 'cassandra', 
+      name: 'Cassandra DB & Spark Engines', 
+      label: 'Feature Store & Lakehouse', 
+      coordinates: { x: 34, y: 56 }, 
+      icon: 'cassandra', 
+      glowColor: 'rgba(45, 212, 191, 0.4)', 
+      color: '#2dd4bf', 
+      desc: 'Spark processes massive datasets to build sparse profile embeddings. Cassandra serves real-time dynamic properties to model engines.' 
+    },
+    { 
+      id: 'user', 
+      name: `Guest Browser: Airbnb Client`, 
+      label: `Guest (${selectedUserObj.name})`, 
+      coordinates: selectedUserObj.coordinates, 
+      icon: 'user', 
+      glowColor: 'rgba(234, 179, 8, 0.4)', 
+      color: '#eab308', 
+      desc: 'Guest searches for a homestay, triggers real-time recommendation, translation, and localized pricing calculation.' 
+    }
+  ];
+
+  const AIRBNB_CONNECTIONS = [
+    { from: 'gitops', to: 'airflow', label: 'Trigger DAG (GitOps)', delayStart: 0, delayEnd: 25 },
+    { from: 'airflow', to: 'cloud', label: 'Kubernetes Rolling Update', delayStart: 15, delayEnd: 55 },
+    { from: 'user', to: 'kafka', label: 'Stream Search Query (JSON)', delayStart: 45, delayEnd: 70 },
+    { from: 'kafka', to: 'apisix', label: 'Queue Payload', delayStart: 60, delayEnd: 78 },
+    { from: 'apisix', to: 'cloud', label: 'Route Load-balanced POST', delayStart: 72, delayEnd: 86 },
+    { from: 'cloud', to: 'cassandra', label: 'Fetch Guest Embeddings', delayStart: 80, delayEnd: 95 },
+    { from: 'cloud', to: 'user', label: 'Inference Stream (SSE/JSON)', delayStart: 90, delayEnd: 100 }
+  ];
+
+  const getAirbnbNodeCoords = (id: string) => {
+    const node = AIRBNB_NODES.find(n => n.id === id);
+    return node ? node.coordinates : { x: 50, y: 50 };
+  };
+
   return (
     <div className="space-y-6 animate-fade-in" id="cluster-map-root">
       {/* View Header */}
@@ -523,6 +675,26 @@ export const ClusterMap: React.FC = () => {
           >
             <Sliders className="h-3.5 w-3.5" />
             <span>Distributed Training</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveMode('airbnb');
+              if (airbnbLogs.length === 0) {
+                const timestampStr = new Date().toLocaleTimeString();
+                setAirbnbLogs([
+                  `[${timestampStr}] SYSTEM: Ready to simulate Airbnb dynamic pricing & vector search routing pipeline.`,
+                  `[${timestampStr}] CONFIG: Choose cloud provider (AWS/GCP/Azure) and business case above, then run simulation.`
+                ]);
+              }
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-sans transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeMode === 'airbnb' 
+                ? 'bg-rose-600 text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            <span>Airbnb GitOps Routing</span>
           </button>
         </div>
       </div>
@@ -646,6 +818,65 @@ export const ClusterMap: React.FC = () => {
                     );
                   })}
                 </>
+              ) : activeMode === 'airbnb' ? (
+                <>
+                  {/* AIRBNB GITOPS & APACHE MULTI-CLOUD PATHS */}
+                  {AIRBNB_CONNECTIONS.map((conn, idx) => {
+                    const fromCoords = getAirbnbNodeCoords(conn.from);
+                    const toCoords = getAirbnbNodeCoords(conn.to);
+                    
+                    // Determine if this segment is actively firing in the simulation progress
+                    const isFiring = airbnbSimulating && 
+                                     airbnbSimProgress >= conn.delayStart && 
+                                     airbnbSimProgress <= conn.delayEnd;
+                    
+                    const strokeColor = isFiring ? '#fb7185' : '#334155';
+                    const strokeWidth = isFiring ? '4' : '1.5';
+                    const glowOpacity = isFiring ? '0.8' : '0.15';
+                    const dashArray = isFiring ? '4 2' : '4 4';
+                    const animSpeed = isFiring ? '1s' : '5s';
+
+                    return (
+                      <g key={`airbnb-conn-${idx}`}>
+                        {/* Glow / Halo Line */}
+                        <line
+                          x1={`${fromCoords.x}%`}
+                          y1={`${fromCoords.y}%`}
+                          x2={`${toCoords.x}%`}
+                          y2={`${toCoords.y}%`}
+                          stroke={isFiring ? '#fda4af' : '#1e293b'}
+                          strokeWidth={isFiring ? '6' : '3'}
+                          strokeLinecap="round"
+                          opacity={glowOpacity}
+                          className={isFiring ? "animate-pulse" : ""}
+                        />
+                        {/* Core Line */}
+                        <line
+                          x1={`${fromCoords.x}%`}
+                          y1={`${fromCoords.y}%`}
+                          x2={`${toCoords.x}%`}
+                          y2={`${toCoords.y}%`}
+                          stroke={strokeColor}
+                          strokeWidth={strokeWidth}
+                          strokeDasharray={dashArray}
+                          style={{
+                            animation: `dash ${animSpeed} linear infinite`
+                          }}
+                        />
+                        {/* Animated packet node flowing */}
+                        <circle r={isFiring ? "5" : "3"} fill={isFiring ? "#f43f5e" : "#475569"}>
+                          <animateMotion
+                            dur={isFiring ? "1s" : "4s"}
+                            repeatCount="indefinite"
+                            path={`M ${fromCoords.x * 8} ${fromCoords.y * 4} L ${toCoords.x * 8} ${toCoords.y * 4}`}
+                            keyPoints="0;1"
+                            keyTimes="0;1"
+                          />
+                        </circle>
+                      </g>
+                    );
+                  })}
+                </>
               ) : (
                 <>
                   {/* TRAINING RING PATHS */}
@@ -752,7 +983,7 @@ export const ClusterMap: React.FC = () => {
             })}
 
             {/* Render Data Centers as pulsing SRE diamonds */}
-            {datacenters.map(dc => {
+            {activeMode !== 'airbnb' && datacenters.map(dc => {
               const isSelected = selectedDC === dc.id;
               const isTargetDC = selectedTargetDC?.id === dc.id && activeMode === 'inference';
               
@@ -804,6 +1035,86 @@ export const ClusterMap: React.FC = () => {
               );
             })}
 
+            {/* Render Airbnb Multi-Cloud Nodes */}
+            {activeMode === 'airbnb' && AIRBNB_NODES.map(node => {
+              // Check if node is actively firing
+              let isNodeActive = false;
+              if (airbnbSimulating) {
+                if (node.id === 'gitops' && airbnbSimProgress < 25) isNodeActive = true;
+                else if (node.id === 'airflow' && airbnbSimProgress >= 15 && airbnbSimProgress < 45) isNodeActive = true;
+                else if (node.id === 'user' && (airbnbSimProgress >= 35 && airbnbSimProgress < 65 || airbnbSimProgress > 90)) isNodeActive = true;
+                else if (node.id === 'kafka' && airbnbSimProgress >= 55 && airbnbSimProgress < 75) isNodeActive = true;
+                else if (node.id === 'apisix' && airbnbSimProgress >= 68 && airbnbSimProgress < 85) isNodeActive = true;
+                else if (node.id === 'cloud' && airbnbSimProgress >= 78 && airbnbSimProgress < 98) isNodeActive = true;
+                else if (node.id === 'cassandra' && airbnbSimProgress >= 82 && airbnbSimProgress < 95) isNodeActive = true;
+              }
+
+              return (
+                <div
+                  key={`airbnb-node-${node.id}`}
+                  style={{ left: `${node.coordinates.x}%`, top: `${node.coordinates.y}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 group z-30 flex flex-col items-center"
+                >
+                  {/* Halo pulse */}
+                  <span 
+                    className="absolute inline-flex h-9 w-9 rounded-full -left-2.5 -top-2.5 transition-all duration-300"
+                    style={{
+                      backgroundColor: node.color,
+                      opacity: isNodeActive ? 0.35 : 0.08,
+                      transform: isNodeActive ? 'scale(1.25)' : 'scale(1)',
+                      animation: isNodeActive ? 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite' : 'none'
+                    }}
+                  />
+
+                  {/* Core Icon Button */}
+                  <div 
+                    className="h-10 w-10 rounded-xl border flex items-center justify-center shadow-2xl transition-all duration-300"
+                    style={{
+                      backgroundColor: '#0a0b14',
+                      borderColor: isNodeActive ? node.color : '#2e354f',
+                      color: node.color,
+                      boxShadow: isNodeActive ? `0 0 15px ${node.color}50` : 'none',
+                      transform: isNodeActive ? 'scale(1.15)' : 'scale(1)'
+                    }}
+                    title={node.name}
+                  >
+                    {node.icon === 'gitops' ? (
+                      <GitBranch className="h-4 w-4" />
+                    ) : node.icon === 'airflow' ? (
+                      <Activity className="h-4 w-4" />
+                    ) : node.icon === 'kafka' ? (
+                      <Zap className="h-4 w-4" />
+                    ) : node.icon === 'apisix' ? (
+                      <Sliders className="h-4 w-4" />
+                    ) : node.icon === 'cloud' ? (
+                      <Cloud className="h-4 w-4" />
+                    ) : node.icon === 'cassandra' ? (
+                      <Database className="h-4 w-4" />
+                    ) : (
+                      <Globe className="h-4 w-4" />
+                    )}
+                  </div>
+
+                  {/* Tooltip / Label */}
+                  <div className="absolute top-11 bg-[#090a12]/95 border border-[#2e354f] text-[8px] font-mono text-slate-100 font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap z-40 transition-all group-hover:scale-105">
+                    {node.label}
+                  </div>
+
+                  {/* Deep detail popup on hover */}
+                  <div className="absolute pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-64 p-3 bg-[#0a0c16]/98 border border-slate-700/60 rounded-xl shadow-2xl text-[10px] text-slate-300 font-sans z-50 -top-24 left-12 space-y-1 backdrop-blur-md">
+                    <p className="font-bold text-white uppercase text-xs flex items-center gap-1.5" style={{ color: node.color }}>
+                      {node.name}
+                    </p>
+                    <p className="leading-relaxed font-normal">{node.desc}</p>
+                    <div className="text-[8px] font-mono opacity-60 pt-1 border-t border-[#2e354f]/50 flex justify-between">
+                      <span>Coordinates: {node.coordinates.x}%, {node.coordinates.y}%</span>
+                      <span>Type: OSS Stack</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
             {/* Interactive World Map Key */}
             <div className="absolute bottom-4 left-4 bg-[#0a0b12]/95 border border-[#2e354f]/50 rounded-xl p-3 space-y-2 text-[10px] font-sans text-slate-400 shadow-lg z-10 max-w-[210px]">
               <div className="font-bold text-white border-b border-[#2e354f]/20 pb-1 mb-1 uppercase tracking-wider font-mono">Map Legend</div>
@@ -823,6 +1134,24 @@ export const ClusterMap: React.FC = () => {
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                     <span>Inference Load: Low / Med / Peak</span>
+                  </div>
+                </>
+              ) : activeMode === 'airbnb' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                    <span>GitOps Source & Orchestrator</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-cyan-400" />
+                    <span>Apache OSS Stream/Gateway</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-indigo-400" />
+                    <span>Multi-Cloud K8s Clusters</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 pl-0.5 mt-1 pt-1 border-t border-[#2e354f]/20 font-mono text-[9px]">
+                    <span className="text-yellow-400 font-bold">● Active Progress Path</span>
                   </div>
                 </>
               ) : (
@@ -952,6 +1281,111 @@ export const ClusterMap: React.FC = () => {
                   <div 
                     className="bg-gradient-to-r from-violet-500 via-indigo-500 to-emerald-400 h-full transition-all duration-350"
                     style={{ width: `${simProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : activeMode === 'airbnb' ? (
+            <div className="rounded-2xl border border-rose-500/25 bg-[#121424]/60 p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2e354f]/25 pb-2">
+                <h3 className="font-display font-bold text-xs text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <GitBranch className="h-4 w-4 text-rose-400 animate-pulse" /> Airbnb Multi-Cloud GitOps Controller
+                </h3>
+                <span className="text-[9px] font-mono font-bold bg-[#0a0b12] text-slate-400 border border-[#2e354f]/40 px-2 py-0.5 rounded-full uppercase">
+                  Declarative State Sync
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                
+                {/* Airbnb AI Service Choice */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Airbnb AI Scenario</label>
+                  <select
+                    value={airbnbCase}
+                    disabled={airbnbSimulating}
+                    onChange={(e) => {
+                      setAirbnbCase(e.target.value as any);
+                    }}
+                    className="w-full bg-[#0a0b12] border border-[#2e354f]/40 text-xs rounded-xl p-2 text-slate-200 outline-none focus:border-rose-500/50 disabled:opacity-50"
+                  >
+                    <option value="pricing">🏠 Dynamic Pricing Engine</option>
+                    <option value="search">🔍 NLP Vector Search Matcher</option>
+                    <option value="reviews">✍️ Review Sentiment &amp; Translator</option>
+                  </select>
+                </div>
+
+                {/* Cloud Provider Select */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cloud Host Provider</label>
+                  <div className="grid grid-cols-3 gap-1 bg-[#0a0b12] p-1 rounded-xl border border-[#2e354f]/40">
+                    <button
+                      onClick={() => !airbnbSimulating && setActiveCloud('gcp')}
+                      disabled={airbnbSimulating}
+                      title="Google Cloud Platform (Vertex AI + GKE)"
+                      className={`p-1.5 rounded-lg flex flex-col items-center justify-center transition-all disabled:opacity-50 cursor-pointer ${activeCloud === 'gcp' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      <span className="text-[9px] font-bold">GCP</span>
+                    </button>
+                    <button
+                      onClick={() => !airbnbSimulating && setActiveCloud('aws')}
+                      disabled={airbnbSimulating}
+                      title="Amazon Web Services (SageMaker + EKS)"
+                      className={`p-1.5 rounded-lg flex flex-col items-center justify-center transition-all disabled:opacity-50 cursor-pointer ${activeCloud === 'aws' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      <span className="text-[9px] font-bold">AWS</span>
+                    </button>
+                    <button
+                      onClick={() => !airbnbSimulating && setActiveCloud('azure')}
+                      disabled={airbnbSimulating}
+                      title="Microsoft Azure (Azure ML + AKS)"
+                      className={`p-1.5 rounded-lg flex flex-col items-center justify-center transition-all disabled:opacity-50 cursor-pointer ${activeCloud === 'azure' ? 'bg-sky-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      <span className="text-[9px] font-bold">Azure</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* User Ingress Location Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Guest Origin Location</label>
+                  <select
+                    value={userLoc}
+                    disabled={airbnbSimulating}
+                    onChange={(e) => {
+                      setUserLoc(e.target.value);
+                    }}
+                    className="w-full bg-[#0a0b12] border border-[#2e354f]/40 text-xs rounded-xl p-2 text-slate-200 outline-none focus:border-rose-500/50 disabled:opacity-50"
+                  >
+                    {USER_LOCATIONS.map(ul => (
+                      <option key={ul.id} value={ul.id}>{ul.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Deploy Trigger Button */}
+                <div className="flex items-end">
+                  <button
+                    onClick={runAirbnbSimulation}
+                    disabled={airbnbSimulating}
+                    className={`w-full py-2.5 px-4 font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                      airbnbSimulating 
+                        ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white shadow-rose-600/10'
+                    }`}
+                  >
+                    <Play className={`h-3.5 w-3.5 ${airbnbSimulating ? 'animate-spin' : ''}`} />
+                    <span>{airbnbSimulating ? 'Syncing GitOps...' : 'Deploy &amp; Stream Inference'}</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {airbnbSimulating && (
+                <div className="w-full bg-[#0a0b12] h-1.5 rounded-full overflow-hidden border border-[#2e354f]/15">
+                  <div 
+                    className="bg-gradient-to-r from-rose-500 via-cyan-400 via-violet-400 to-emerald-400 h-full transition-all duration-350"
+                    style={{ width: `${airbnbSimProgress}%` }}
                   />
                 </div>
               )}
@@ -1289,6 +1723,275 @@ export const ClusterMap: React.FC = () => {
                 )}
               </div>
             </>
+          ) : activeMode === 'airbnb' ? (
+            <>
+              {/* AIRBNB GITOPS MULTI-CLOUD ARCHITECTURE CARD */}
+              <div className="rounded-3xl border border-rose-500/20 bg-[#101222]/85 p-5 space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display font-bold text-xs text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="h-4 w-4 text-rose-400" /> Enterprise Architecture
+                  </h3>
+                  <span className="text-[9px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full uppercase">
+                    Airbnb v2.4
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <h4 className="font-display font-bold text-base text-white">Dynamic AI Pipelines</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    A highly optimized multi-cloud setup combining GitOps source synchronization with open-source (Apache) streaming data technologies.
+                  </p>
+                </div>
+
+                <div className="h-px bg-[#2e354f]/25" />
+
+                {/* Sub tabs to explore the stack details */}
+                <div className="grid grid-cols-3 gap-1 bg-[#0a0b12] p-1 rounded-xl border border-[#2e354f]/30">
+                  <button
+                    onClick={() => setActiveDetailTab('overview')}
+                    className={`py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${activeDetailTab === 'overview' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Workflow
+                  </button>
+                  <button
+                    onClick={() => setActiveDetailTab('connections')}
+                    className={`py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${activeDetailTab === 'connections' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Hop Counts
+                  </button>
+                  <button
+                    onClick={() => setActiveDetailTab('apache-oss')}
+                    className={`py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${activeDetailTab === 'apache-oss' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    OSS Tools
+                  </button>
+                </div>
+
+                {/* Tab content */}
+                {activeDetailTab === 'overview' && (
+                  <div className="space-y-3 animate-fade-in text-[11px] text-slate-300">
+                    <p className="font-semibold text-white uppercase text-[10px] tracking-wider text-rose-400">Active Scenario Flow</p>
+                    {airbnbCase === 'pricing' ? (
+                      <div className="space-y-2 bg-[#090a12] p-3 rounded-xl border border-[#2e354f]/15">
+                        <p className="font-bold text-white text-xs flex items-center gap-1.5">
+                          🏠 Dynamic Pricing Engine
+                        </p>
+                        <p className="text-slate-400 leading-relaxed text-[10px]">
+                          Evaluates listing attributes, local booking densities, and weather records in real-time. Commits triggering adjustments from GitOps down through Apache Airflow pipelines onto distributed container clusters.
+                        </p>
+                      </div>
+                    ) : airbnbCase === 'search' ? (
+                      <div className="space-y-2 bg-[#090a12] p-3 rounded-xl border border-[#2e354f]/15">
+                        <p className="font-bold text-white text-xs flex items-center gap-1.5">
+                          🔍 Smart NLP Search Matcher
+                        </p>
+                        <p className="text-slate-400 leading-relaxed text-[10px]">
+                          Translates natural language guest requests into vector space embeddings. Compares request weights against Cassandra listings utilizing parallelized Spark calculations.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 bg-[#090a12] p-3 rounded-xl border border-[#2e354f]/15">
+                        <p className="font-bold text-white text-xs flex items-center gap-1.5">
+                          ✍️ Review Sentiment &amp; Translator
+                        </p>
+                        <p className="text-slate-400 leading-relaxed text-[10px]">
+                          Captures user reviews, extracts structural feedback parameters, and performs machine translations in real-time using large LLM networks deployed across multi-cloud GPU resources.
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Cloud Deployment Host</span>
+                      <div className="bg-[#090a12] p-2.5 rounded-xl border border-[#2e354f]/20 flex items-center justify-between">
+                        <span className="font-semibold text-white">{activeCloud === 'gcp' ? 'Google Cloud Platform' : activeCloud === 'aws' ? 'Amazon Web Services' : 'Microsoft Azure'}</span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20">
+                          {activeCloud === 'gcp' ? 'GKE' : activeCloud === 'aws' ? 'EKS' : 'AKS'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeDetailTab === 'connections' && (
+                  <div className="space-y-3 animate-fade-in text-[11px] text-slate-300">
+                    <p className="font-semibold text-white uppercase text-[10px] tracking-wider text-rose-400">Pipeline Hops Breakdown</p>
+                    <div className="space-y-2 bg-[#0a0b12] p-2.5 rounded-xl border border-[#2e354f]/25 text-[10px] font-mono">
+                      <div className="flex justify-between py-1 border-b border-[#2e354f]/10">
+                        <span className="text-slate-400">Hop 1: Git Repo ➔ Airflow</span>
+                        <span className="text-rose-400 font-bold">Code Deploy</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-[#2e354f]/10">
+                        <span className="text-slate-400">Hop 2: Airflow ➔ K8s</span>
+                        <span className="text-cyan-400 font-bold">Image Push</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-[#2e354f]/10">
+                        <span className="text-slate-400">Hop 3: Guest ➔ Kafka</span>
+                        <span className="text-amber-400 font-bold">Clickstream</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-[#2e354f]/10">
+                        <span className="text-slate-400">Hop 4: Kafka ➔ APISIX</span>
+                        <span className="text-violet-400 font-bold">API Route</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-[#2e354f]/10">
+                        <span className="text-slate-400">Hop 5: APISIX ➔ Cloud GPU</span>
+                        <span className="text-emerald-400 font-bold">Inference</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-400">Hop 6: Cloud ➔ Cassandra</span>
+                        <span className="text-teal-400 font-bold">Feature DB</span>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-slate-400 italic">
+                      Every step utilizes secure intra-datacenter subsea fiber lines or edge CDN acceleration.
+                    </p>
+                  </div>
+                )}
+
+                {activeDetailTab === 'apache-oss' && (
+                  <div className="space-y-3 animate-fade-in text-[11px] text-slate-300">
+                    <p className="font-semibold text-white uppercase text-[10px] tracking-wider text-rose-400">Apache Stack Glossary</p>
+                    <div className="space-y-2 overflow-y-auto max-h-[220px] pr-1 scrollbar-none">
+                      <div className="bg-[#090a12] p-2 rounded-lg border border-[#2e354f]/15 space-y-1">
+                        <p className="font-bold text-cyan-400 text-[10px] flex items-center justify-between">
+                          <span>Apache Airflow</span>
+                          <span className="text-[7px] text-slate-500 uppercase font-mono">Workflow DAG</span>
+                        </p>
+                        <p className="text-slate-400 text-[9px] leading-relaxed">
+                          Schedules, monitors, and orchestrates complex ML pipelines and dynamic config pushes using programmatic Python definitions.
+                        </p>
+                      </div>
+                      <div className="bg-[#090a12] p-2 rounded-lg border border-[#2e354f]/15 space-y-1">
+                        <p className="font-bold text-amber-400 text-[10px] flex items-center justify-between">
+                          <span>Apache Kafka</span>
+                          <span className="text-[7px] text-slate-500 uppercase font-mono">Stream Bus</span>
+                        </p>
+                        <p className="text-slate-400 text-[9px] leading-relaxed">
+                          Provides fault-tolerant, high-throughput distributed messaging capable of queueing millions of user searches per second.
+                        </p>
+                      </div>
+                      <div className="bg-[#090a12] p-2 rounded-lg border border-[#2e354f]/15 space-y-1">
+                        <p className="font-bold text-violet-400 text-[10px] flex items-center justify-between">
+                          <span>Apache APISIX</span>
+                          <span className="text-[7px] text-slate-500 uppercase font-mono">API Gateway</span>
+                        </p>
+                        <p className="text-slate-400 text-[9px] leading-relaxed">
+                          Resolves BGP routing and dynamic proxy configurations in micro-seconds, serving as the enterprise gateway layer for ingress data.
+                        </p>
+                      </div>
+                      <div className="bg-[#090a12] p-2 rounded-lg border border-[#2e354f]/15 space-y-1">
+                        <p className="font-bold text-teal-400 text-[10px] flex items-center justify-between">
+                          <span>Apache Spark</span>
+                          <span className="text-[7px] text-slate-500 uppercase font-mono">Compute Engine</span>
+                        </p>
+                        <p className="text-slate-400 text-[9px] leading-relaxed">
+                          Compiles distributed feature vectors, processes raw clickstreams, and prepares listing datasets for parallel training/indexing.
+                        </p>
+                      </div>
+                      <div className="bg-[#090a12] p-2 rounded-lg border border-[#2e354f]/15 space-y-1">
+                        <p className="font-bold text-emerald-400 text-[10px] flex items-center justify-between">
+                          <span>Apache Cassandra</span>
+                          <span className="text-[7px] text-slate-500 uppercase font-mono">NoSQL Store</span>
+                        </p>
+                        <p className="text-slate-400 text-[9px] leading-relaxed">
+                          A masterless distributed NoSQL database delivering low-latency real-time reads/writes for user preference features.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PIPELINE TRAVERSAL STATUS CARD */}
+              <div className="rounded-3xl border border-[#2e354f]/35 bg-[#101222]/80 p-5 space-y-3 font-sans animate-fade-in">
+                <div className="flex items-center justify-between border-b border-[#2e354f]/25 pb-2">
+                  <h3 className="font-display font-bold text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Activity className="h-4 w-4 text-violet-400" /> Pipeline Traversal Status
+                  </h3>
+                  <span className="font-mono text-emerald-400 font-bold text-xs bg-emerald-500/10 border border-emerald-500/15 px-2 py-0.5 rounded">
+                    {airbnbSimulating ? `${airbnbSimProgress}%` : 'IDLE'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 pt-1 text-[11px]">
+                  {/* Phase 1: GitOps Commit */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <GitBranch className={`h-4 w-4 ${airbnbSimProgress >= 10 ? 'text-rose-400' : 'text-slate-600'}`} />
+                      <span className={`${airbnbSimProgress >= 10 ? 'text-slate-100 font-bold' : 'text-slate-500'}`}>1. GitOps Config push</span>
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: airbnbSimProgress >= 10 ? '#ef4444' : '#64748b' }}>
+                      {airbnbSimProgress >= 10 ? 'COMMITTED' : 'AWAITING'}
+                    </span>
+                  </div>
+
+                  {/* Phase 2: Airflow DAG */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Activity className={`h-4.5 w-4.5 ${airbnbSimProgress >= 30 ? 'text-cyan-400' : 'text-slate-600'}`} />
+                      <span className={`${airbnbSimProgress >= 30 ? 'text-slate-100 font-bold' : 'text-slate-500'}`}>2. Airflow DAG Trigger</span>
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: airbnbSimProgress >= 30 ? '#06b6d4' : '#64748b' }}>
+                      {airbnbSimProgress >= 30 ? 'DEPLOYED' : 'AWAITING'}
+                    </span>
+                  </div>
+
+                  {/* Phase 3: Kafka Ingress */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Zap className={`h-4 w-4 ${airbnbSimProgress >= 65 ? 'text-amber-400' : 'text-slate-600'}`} />
+                      <span className={`${airbnbSimProgress >= 65 ? 'text-slate-100 font-bold' : 'text-slate-500'}`}>3. Kafka Clickstream Ingest</span>
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: airbnbSimProgress >= 65 ? '#fbbf24' : '#64748b' }}>
+                      {airbnbSimProgress >= 65 ? 'STREAMING' : 'AWAITING'}
+                    </span>
+                  </div>
+
+                  {/* Phase 4: APISIX Routing */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Sliders className={`h-4 w-4 ${airbnbSimProgress >= 75 ? 'text-violet-400' : 'text-slate-600'}`} />
+                      <span className={`${airbnbSimProgress >= 75 ? 'text-slate-100 font-bold' : 'text-slate-500'}`}>4. APISIX Route Gateway</span>
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: airbnbSimProgress >= 75 ? '#a78bfa' : '#64748b' }}>
+                      {airbnbSimProgress >= 75 ? 'ROUTED' : 'AWAITING'}
+                    </span>
+                  </div>
+
+                  {/* Phase 5: Multi-Cloud Inference */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Cloud className={`h-4 w-4 ${airbnbSimProgress >= 90 ? 'text-indigo-400' : 'text-slate-600'}`} />
+                      <span className={`${airbnbSimProgress >= 90 ? 'text-slate-100 font-bold' : 'text-slate-500'}`}>5. Multi-Cloud Inference</span>
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: airbnbSimProgress >= 90 ? '#818cf8' : '#64748b' }}>
+                      {airbnbSimProgress >= 90 ? 'EXECUTED' : 'AWAITING'}
+                    </span>
+                  </div>
+
+                  {/* Phase 6: Cassandra lookup */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Database className={`h-4 w-4 ${airbnbSimProgress >= 95 ? 'text-teal-400' : 'text-slate-600'}`} />
+                      <span className={`${airbnbSimProgress >= 95 ? 'text-slate-100 font-bold' : 'text-slate-500'}`}>6. Cassandra Lookup</span>
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: airbnbSimProgress >= 95 ? '#2dd4bf' : '#64748b' }}>
+                      {airbnbSimProgress >= 95 ? 'HYDRATED' : 'AWAITING'}
+                    </span>
+                  </div>
+                </div>
+
+                {airbnbSimulating && (
+                  <div className="pt-2 border-t border-[#2e354f]/15 space-y-1">
+                    <div className="flex justify-between text-[8px] font-mono text-slate-500">
+                      <span>Hop traversal</span>
+                      <span>6 total hops</span>
+                    </div>
+                    <div className="w-full bg-[#0a0b12] h-1 rounded-full overflow-hidden">
+                      <div className="h-full bg-rose-500 transition-all duration-300" style={{ width: `${airbnbSimProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             /* DISTRIBUTED TRAINING MONITOR CARD - TRAINING MODE */
             <div className="rounded-3xl border border-[#2e354f]/35 bg-[#101222]/85 p-5 space-y-4">
@@ -1416,7 +2119,7 @@ export const ClusterMap: React.FC = () => {
           <div className="rounded-3xl border border-[#2e354f]/35 bg-[#090b14] p-5 space-y-3 font-mono text-xs flex flex-col h-[280px]">
             <div className="flex items-center justify-between text-slate-400 pb-2 border-b border-[#2e354f]/20">
               <span className="text-[10px] font-bold text-violet-400">
-                {activeMode === 'inference' ? 'WAN_ORCHESTRATOR_TELEMETRY' : 'DISTRIBUTED_TRAINING_ALLREDUCE'}
+                {activeMode === 'inference' ? 'WAN_ORCHESTRATOR_TELEMETRY' : activeMode === 'airbnb' ? 'AIRBNB_GITOPS_TELEMETRY' : 'DISTRIBUTED_TRAINING_ALLREDUCE'}
               </span>
               <span className="text-[9px] text-slate-500">v1.2</span>
             </div>
@@ -1443,6 +2146,36 @@ export const ClusterMap: React.FC = () => {
                             ? 'border-violet-500 text-violet-300' 
                             : 'border-slate-700 text-slate-400'
                         }`}
+                      >
+                        {log}
+                      </div>
+                    );
+                  })
+                )
+              ) : activeMode === 'airbnb' ? (
+                airbnbLogs.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-600 text-center space-y-1">
+                    <Activity className="h-6 w-6 text-slate-700 animate-pulse" />
+                    <span>Pipeline telemetry inactive.</span>
+                    <span className="text-[9px]">Select an AI scenario and press "Deploy &amp; Stream Inference" to trace routing.</span>
+                  </div>
+                ) : (
+                  airbnbLogs.map((log, i) => {
+                    let isSuccess = log.includes('SUCCESS') || log.includes('COMPLETE') || log.includes('SUCCESSFUL');
+                    let isStep = log.includes('STEP');
+                    let isCloud = log.includes('CLOUD') || log.includes('GCP') || log.includes('AWS') || log.includes('Azure') || log.includes('GKE') || log.includes('EKS') || log.includes('AKS');
+                    let isApache = log.includes('APACHE') || log.includes('Kafka') || log.includes('Airflow') || log.includes('APISIX') || log.includes('Cassandra') || log.includes('Spark');
+
+                    let borderClass = 'border-slate-700 text-slate-400';
+                    if (isSuccess) borderClass = 'border-emerald-500 text-emerald-400 bg-emerald-500/5 font-bold py-0.5';
+                    else if (isStep) borderClass = 'border-rose-500 text-rose-300 font-bold';
+                    else if (isCloud) borderClass = 'border-sky-500 text-sky-400 font-semibold';
+                    else if (isApache) borderClass = 'border-amber-500 text-amber-300';
+
+                    return (
+                      <div 
+                        key={i} 
+                        className={`leading-relaxed border-l-2 pl-2 animate-fade-in font-mono text-[10px] ${borderClass}`}
                       >
                         {log}
                       </div>
