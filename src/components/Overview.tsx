@@ -2,6 +2,7 @@ import React from 'react';
 import { Tab } from '../types';
 import { Sparkles, Terminal, Activity, Layers, Cpu, Compass, Calculator, BookOpen, HelpCircle, ArrowRight, ShieldCheck, Heart, Server, Zap, Globe } from 'lucide-react';
 import { GPUClusterMetrics } from './GPUClusterMetrics';
+import { HoverHint } from './HoverHint';
 
 interface OverviewProps {
   setActiveTab: (tab: Tab) => void;
@@ -19,20 +20,20 @@ export const Overview: React.FC<OverviewProps> = ({ setActiveTab }) => {
             Airbnb AI Compute Masterclass Playbook
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
-            How to Ace the <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400">Kubernetes AI Compute &amp; GPU Platform</span> Interview
+            How to Ace the <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400"><HoverHint term="Kubernetes"/> AI Compute &amp; <HoverHint term="GPU"/> Platform</span> Interview
           </h2>
           <p className="mt-4 text-slate-300 text-sm md:text-base leading-relaxed">
             Welcome, Marcus. This interactive platform is tailored specifically to your upcoming 
-            <strong> Kubernetes Engineer (AI Compute)</strong> interview at <strong>Airbnb</strong>. It connects your exceptional 
-            background as a <strong>Google Staff SRE (Borg / Scheduler internals)</strong> and <strong>Globo high-concurrency engineer</strong> 
-            with modern GPU orchestration, vLLM serving, and low-latency AI platform operations.
+            <strong> <HoverHint term="Kubernetes"/> Engineer (AI Compute)</strong> interview at <strong>Airbnb</strong>. It connects your exceptional 
+            background as a <strong>Google Staff <HoverHint term="SRE"/> (Borg / <HoverHint term="Scheduler"/> internals)</strong> and <strong>Globo high-concurrency engineer</strong> 
+            with modern <HoverHint term="GPU"/> orchestration, vLLM serving, and low-latency AI platform operations.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={() => setActiveTab('architecture')}
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs px-5 py-3 hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-600/20 transition-all cursor-pointer"
             >
-              Start Cluster Exploration <ArrowRight className="h-3.5 w-3.5" />
+              Start <HoverHint term="Cluster"/> Exploration <ArrowRight className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => setActiveTab('qa')}
@@ -87,10 +88,10 @@ export const Overview: React.FC<OverviewProps> = ({ setActiveTab }) => {
               Airbnb operates a massive GPU fleet supporting search ranking, listing translation, fraud detection, and customer service. You will be evaluated on your ability to:
             </p>
             <ul className="mt-3 space-y-2 text-xs text-slate-300 list-disc pl-5">
-              <li>Manage high-capacity multi-node GPU clusters (A100s, H100s) on AWS and GCP.</li>
+              <li>Manage high-capacity multi-node <HoverHint term="GPU"/> clusters (A100s, H100s) on AWS and GCP.</li>
               <li>Implement low-latency inference pipelines (continuous batching, speculative decoding).</li>
-              <li>Isolate multi-tenant workloads while maintaining cost efficiency &amp; zero-VRAM leakage.</li>
-              <li>Provide SRE diagnostics during production outages (CUDA OOM, storage throttling).</li>
+              <li>Isolate multi-tenant workloads while maintaining cost efficiency &amp; zero-<HoverHint term="VRAM"/> leakage.</li>
+              <li>Provide <HoverHint term="SRE"/> diagnostics during production outages (<HoverHint term="CUDA"/> OOM, storage throttling).</li>
             </ul>
           </div>
           <div className="mt-4 text-slate-400 text-xs italic flex items-center gap-1.5">

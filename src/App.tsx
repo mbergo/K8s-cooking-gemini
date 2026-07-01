@@ -17,6 +17,7 @@ import { AirbnbPipelineSimulator } from "./components/AirbnbPipelineSimulator";
 import { HPASandbox } from "./components/HPASandbox";
 import { RemoteCluster } from "./components/RemoteCluster";
 import { FloatingVoiceAgent } from "./components/FloatingVoiceAgent";
+import { HoverHint } from "./components/HoverHint";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -87,8 +88,8 @@ export default function App() {
       {/* Humble Footer */}
       <footer className="border-t border-[#1a1e35] bg-[#080a11] px-6 py-4 text-center text-xs text-slate-500 font-sans flex items-center justify-center gap-2">
         <span>
-          © 2026 Kubernetes AI Compute Masterclass. Designed with high
-          performance for SRE Architects.
+          © 2026 <HoverHint term="Kubernetes"/> AI Compute Masterclass. Designed with high
+          performance for <HoverHint term="SRE"/> Architects.
         </span>
       </footer>
 

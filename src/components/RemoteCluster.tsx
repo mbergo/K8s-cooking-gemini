@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Activity, Terminal, Shield, CheckCircle, AlertTriangle, Key } from 'lucide-react';
+import { HoverHint } from './HoverHint';
 
 export const RemoteCluster: React.FC = () => {
   const [kubeconfig, setKubeconfig] = useState('');
@@ -116,7 +117,7 @@ export const RemoteCluster: React.FC = () => {
           <div className="bg-[#0b0c16]/90 border border-[#2e354f]/40 p-6 rounded-3xl flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Server className="h-4 w-4 text-violet-400" /> Active Nodes
+                <Server className="h-4 w-4 text-violet-400" /> Active <HoverHint term="Node">Nodes</HoverHint>
               </h3>
               <span className="text-xs font-mono text-slate-500">{nodes.length} total</span>
             </div>
@@ -144,7 +145,7 @@ export const RemoteCluster: React.FC = () => {
           <div className="bg-[#0b0c16]/90 border border-[#2e354f]/40 p-6 rounded-3xl flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Activity className="h-4 w-4 text-emerald-400" /> Active Pods
+                <Activity className="h-4 w-4 text-emerald-400" /> Active <HoverHint term="Pods">Pods</HoverHint>
               </h3>
               <span className="text-xs font-mono text-slate-500">{pods.length} total</span>
             </div>

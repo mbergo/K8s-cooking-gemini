@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Tab } from "../types";
+import { HoverHint } from "./HoverHint";
 import {
   BookOpen,
   HelpCircle,
@@ -129,14 +130,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <h1 className="font-display text-lg font-bold text-emerald-500 tracking-tight flex items-center gap-2 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">
-              K8s AI Compute Masterclass
+              <HoverHint term="K8s"/> AI Compute Masterclass
               <span className="rounded-full bg-emerald-950 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                Staff SRE Playbook
+                Staff <HoverHint term="SRE"/> Playbook
               </span>
             </h1>
-            <p className="text-xs text-emerald-700 font-mono">
-              Kubernetes &bull; GPU Scheduling &bull; CUDA Internals &bull; AI
-              Pipelines
+            <p className="text-xs text-emerald-700 font-mono flex gap-1 items-center">
+              <HoverHint term="Kubernetes"/> &bull; <HoverHint term="GPU"/> <HoverHint term="Scheduler"/> &bull; <HoverHint term="CUDA"/> Internals &bull; AI Pipelines
             </p>
           </div>
         </div>

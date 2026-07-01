@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HoverHint } from './HoverHint';
 import { 
   Globe, Activity, Server, Zap, Cpu, Leaf, DollarSign, Clock, Play, ArrowRight, 
   ShieldAlert, Wifi, HelpCircle, Sliders, AlertTriangle, RefreshCw, PauseCircle, 
@@ -891,6 +892,33 @@ export const ClusterMap: React.FC = () => {
               {activeMode === 'inference' ? 'Global Network Latency Graph' : 'All-Reduce Distributed Ring Mesh'}
             </div>
 
+            {/* GPU Utilization Heatmap Overlay */}
+            {activeMode !== 'airbnb' && (
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                {datacenters.map(dc => {
+                  if (!dc.healthy) return null;
+                  const intensity = dc.activeWorkload / 100;
+                  // Map intensity from 0 (green) to 1 (red)
+                  // Hue: 120 (green) -> 0 (red)
+                  const hue = (1 - intensity) * 120;
+                  const size = 60 + intensity * 140; // dynamically sizes the glow based on workload
+                  return (
+                    <div
+                      key={`heatmap-${dc.id}`}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-screen transition-all duration-1000"
+                      style={{
+                        left: `${dc.coordinates.x}%`,
+                        top: `${dc.coordinates.y}%`,
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        background: `radial-gradient(circle, hsla(${hue}, 100%, 50%, ${0.15 + intensity * 0.3}) 0%, transparent 70%)`
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
             {/* SVG Interactive Overlays (Pathways) */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ minHeight: '400px' }}>
               {/* Render pathways according to Mode */}
@@ -1309,7 +1337,7 @@ export const ClusterMap: React.FC = () => {
                       <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-2 flex items-start gap-1.5 text-[9px] font-sans text-rose-300 animate-pulse">
                         <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
                         <div>
-                          <p className="font-extrabold uppercase text-[8px] tracking-wide">GPU Warning Alert</p>
+                          <p className="font-extrabold uppercase text-[8px] tracking-wide"><HoverHint term="GPU"/> Warning Alert</p>
                           <p className="text-[8px] text-slate-300 leading-snug">
                             Node cluster exceeds normal budget of {gpuAlertThreshold}%. Please adjust traffic policy.
                           </p>
@@ -1319,7 +1347,7 @@ export const ClusterMap: React.FC = () => {
 
                     {/* GPU details */}
                     <div className="text-[8px] font-mono text-slate-500 flex justify-between items-center bg-[#090b14]/50 p-1 rounded border border-[#2e354f]/15">
-                      <span className="text-slate-400 font-bold uppercase">GPU CLUSTER:</span>
+                      <span className="text-slate-400 font-bold uppercase"><HoverHint term="GPU"/> CLUSTER:</span>
                       <span className="text-slate-300 truncate max-w-[130px]" title={dc.gpus}>
                         {dc.gpus}
                       </span>
@@ -2693,7 +2721,7 @@ export const ClusterMap: React.FC = () => {
                         {alert.message ? (
                           alert.message
                         ) : (
-                          <>GPU utilization reached <span className={alert.type === 'critical' ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>{alert.workload}%</span>, exceeding target budget limit of {gpuAlertThreshold}%.</>
+                          <><HoverHint term="GPU"/> utilization reached <span className={alert.type === 'critical' ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>{alert.workload}%</span>, exceeding target budget limit of {gpuAlertThreshold}%.</>
                         )}
                       </p>
                     </div>

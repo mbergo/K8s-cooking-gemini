@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { HoverHint } from "./HoverHint";
 import {
   Activity,
   Server,
@@ -215,7 +216,7 @@ export const HPASandbox: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Cpu className="h-3.5 w-3.5 text-amber-400" /> Target CPU
+                    <Cpu className="h-3.5 w-3.5 text-amber-400" /> Target <HoverHint term="CPU"/>
                     Utilization
                   </label>
                   <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
