@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Globe, Activity, Server, Zap, Cpu, Leaf, DollarSign, Clock, Play, ArrowRight, 
   ShieldAlert, Wifi, HelpCircle, Sliders, AlertTriangle, RefreshCw, PauseCircle, 
-  PlayCircle, XCircle, GitBranch, Database, Cloud, Terminal, Layers
+  PlayCircle, XCircle, GitBranch, Database, Cloud, Terminal, Layers, Lock, Shield
 } from 'lucide-react';
 
 interface DataCenter {
@@ -202,6 +202,7 @@ export const ClusterMap: React.FC = () => {
   ]);
   const [telemetryLogs, setTelemetryLogs] = useState<string[]>([]);
   const [selectedTargetDC, setSelectedTargetDC] = useState<DataCenter | null>(DATA_CENTERS[0]);
+  const [serviceMeshEnabled, setServiceMeshEnabled] = useState<boolean>(false);
 
   // AIRBNB MULTI-CLOUD GITOPS & APACHE OSS STATE
   const [airbnbCase, setAirbnbCase] = useState<'pricing' | 'search' | 'reviews'>('pricing');
@@ -452,6 +453,9 @@ export const ClusterMap: React.FC = () => {
     };
 
     addLog(`INIT: User in ${user.name} requested multi-region AI inference (Context: ${contextSize}KB)`, 0);
+    if (serviceMeshEnabled) {
+      addLog(`MESH: mTLS tunnels active. Envoy sidecar handshake initiated using ECDHE-ECDSA-AES128-GCM-SHA256`, 200);
+    }
     addLog(`POLICY: Orchestrator selected target node [${targetDC.name}] using policy [${policy.toUpperCase()}]`, 400);
 
     // Staggered traceroute hopping simulation logs
@@ -459,26 +463,42 @@ export const ClusterMap: React.FC = () => {
       if (idx === 0) return;
       const segmentLag = hop.pingContributionMs;
       const prevHop = hopsList[idx - 1];
-      const delay = 600 + idx * 450;
+      const delay = 600 + idx * 550;
       addLog(`TRACEROUTE: Hop #${idx}: [${prevHop.id}] ➔ [${hop.id}] via ${hop.linkType} (Accumulated RTT: ${segmentLag}ms)`, delay);
+      if (serviceMeshEnabled) {
+        const sidecarLatency = (0.22 + Math.random() * 0.15).toFixed(2);
+        addLog(`MESH: [${hop.id}] Envoy sidecar proxy active. Mutual TLS tunnel encrypted. Latency overhead: +${sidecarLatency}ms`, delay + 250);
+      }
     });
 
-    const routeDelayOffset = 600 + hopsList.length * 450;
+    const routeDelayOffset = 600 + hopsList.length * 550;
     
     const queueLatency = Math.floor(targetDC.activeWorkload * 0.4);
     const computeLatency = Math.floor(25 + contextSize * 3);
     const totalCompute = queueLatency + computeLatency;
 
     addLog(`COMPUTE: Enqueued on GPU Scheduler. Queue delay: ${queueLatency}ms. Executing prefill on ${targetDC.gpus.split(' ')[1]} tensor cores...`, routeDelayOffset + 300);
+    if (serviceMeshEnabled) {
+      addLog(`MESH: Local sidecar proxy routing decapsulated request from [ingress-gateway] to [model-server] port 8000 (+0.12ms)`, routeDelayOffset + 450);
+    }
     addLog(`COMPUTE: Completed prefill & first-token generation in ${computeLatency}ms`, routeDelayOffset + 800);
     addLog(`STREAM: Initiated back-propagation stream. First chunk sent over CNI/Cilium mesh`, routeDelayOffset + 1300);
+    if (serviceMeshEnabled) {
+      addLog(`MESH: mTLS session verified for egress chunk streams. All 12 dynamic microservice pods secured.`, routeDelayOffset + 1500);
+    }
     
     const totalRtt = targetDC.pingMs[userLoc] + totalCompute;
     setTimeout(() => {
-      setTelemetryLogs(prev => [
-        ...prev,
-        `[${new Date().toLocaleTimeString()}] SUCCESS: Stream loaded in client browser! Total Time-To-First-Token (TTFT): ${totalRtt}ms.`
-      ]);
+      setTelemetryLogs(prev => {
+        const list = [
+          ...prev,
+          `[${new Date().toLocaleTimeString()}] SUCCESS: Stream loaded in client browser! Total Time-To-First-Token (TTFT): ${totalRtt}ms.`
+        ];
+        if (serviceMeshEnabled) {
+          list.push(`[${new Date().toLocaleTimeString()}] MESH SECURITY: 100% of packets routed through mTLS tunnels. Total sidecar proxy latency overhead: ${(0.3 + hopsList.length * 0.25).toFixed(2)}ms.`);
+        }
+        return list;
+      });
       setSimProgress(100);
       setSimulating(false);
     }, routeDelayOffset + 1800);
@@ -750,9 +770,10 @@ export const ClusterMap: React.FC = () => {
                           y1={`${prevHop.coordinates.y}%`}
                           x2={`${hop.coordinates.x}%`}
                           y2={`${hop.coordinates.y}%`}
-                          stroke="url(#routeGlow)"
-                          strokeWidth="3.5"
+                          stroke={serviceMeshEnabled ? "#10b981" : "url(#routeGlow)"}
+                          strokeWidth={serviceMeshEnabled ? "4.5" : "3.5"}
                           strokeLinecap="round"
+                          opacity={serviceMeshEnabled ? 0.7 : 1}
                           className="animate-pulse"
                         />
                         {/* Dotted path */}
@@ -761,15 +782,28 @@ export const ClusterMap: React.FC = () => {
                           y1={`${prevHop.coordinates.y}%`}
                           x2={`${hop.coordinates.x}%`}
                           y2={`${hop.coordinates.y}%`}
-                          stroke="#10b981"
+                          stroke={serviceMeshEnabled ? "#34d399" : "#10b981"}
                           strokeWidth="1.5"
                           strokeDasharray="6 4"
                           style={{
                             animation: 'dash 15s linear infinite'
                           }}
                         />
+                        {/* mTLS glowing outer shield */}
+                        {serviceMeshEnabled && (
+                          <line
+                            x1={`${prevHop.coordinates.x}%`}
+                            y1={`${prevHop.coordinates.y}%`}
+                            x2={`${hop.coordinates.x}%`}
+                            y2={`${hop.coordinates.y}%`}
+                            stroke="#059669"
+                            strokeWidth="9"
+                            strokeLinecap="round"
+                            opacity="0.18"
+                          />
+                        )}
                         {/* Moving packet dot */}
-                        <circle r="4.5" fill="#c084fc">
+                        <circle r="4.5" fill={serviceMeshEnabled ? "#10b981" : "#c084fc"}>
                           <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
@@ -778,6 +812,24 @@ export const ClusterMap: React.FC = () => {
                             keyTimes="0;1"
                           />
                         </circle>
+
+                        {/* mTLS badge midpoint lock */}
+                        {serviceMeshEnabled && (
+                          <foreignObject
+                            x={`${(prevHop.coordinates.x + hop.coordinates.x) / 2}%`}
+                            y={`${(prevHop.coordinates.y + hop.coordinates.y) / 2}%`}
+                            width="42"
+                            height="22"
+                            className="overflow-visible pointer-events-none select-none"
+                          >
+                            <div className="flex justify-center -translate-x-1/2 -translate-y-1/2">
+                              <span className="bg-emerald-950/95 border border-emerald-500/80 text-emerald-400 text-[7px] font-mono font-extrabold px-1 py-0.5 rounded shadow-lg flex items-center gap-0.5 animate-pulse">
+                                <Lock className="h-1.5 w-1.5" />
+                                <span>mTLS</span>
+                              </span>
+                            </div>
+                          </foreignObject>
+                        )}
 
                         {/* Connection metadata label (Hop Number) */}
                         {index < activeHops.length - 1 && (
@@ -972,6 +1024,16 @@ export const ClusterMap: React.FC = () => {
                   className="absolute -translate-x-1/2 -translate-y-1/2 group z-20 cursor-pointer"
                 >
                   <span className={`absolute inline-flex h-4 w-4 rounded-full -left-2 -top-2 ${isSelected ? 'bg-amber-400/35 animate-ping' : 'bg-slate-400/10 group-hover:bg-amber-400/20'}`} />
+                  
+                  {serviceMeshEnabled && isSelected && (
+                    <>
+                      <span className="absolute -left-4 -top-4 h-8 w-8 rounded-full border border-dashed border-emerald-400/60 animate-spin" style={{ animationDuration: '8s' }} />
+                      <span className="absolute -top-[22px] left-1/2 -translate-x-1/2 bg-emerald-950/95 border border-emerald-500/40 rounded px-1 py-0.25 text-[6px] font-mono font-bold whitespace-nowrap shadow-md uppercase tracking-wider text-emerald-400">
+                        Proxy +0.32ms
+                      </span>
+                    </>
+                  )}
+
                   <div className={`h-2.5 w-2.5 rounded-full border border-black shadow transition-all ${isSelected ? 'bg-amber-400 scale-125' : 'bg-slate-400 group-hover:bg-amber-300'}`} />
                   
                   {/* Tooltip */}
@@ -1007,6 +1069,19 @@ export const ClusterMap: React.FC = () => {
                   {/* Highlighting target of simulation */}
                   {isTargetDC && (
                     <span className="absolute -left-4 -top-4 h-11 w-11 rounded-full bg-indigo-500/30 animate-pulse border border-indigo-400/20" />
+                  )}
+                  
+                  {/* Service Mesh Envoy Sidecar Proxy visualization */}
+                  {activeMode === 'inference' && serviceMeshEnabled && activeHops.some(h => h.id === dc.id) && (
+                    <>
+                      <span className="absolute -left-5 -top-5 h-10 w-10 rounded-full border border-dashed border-emerald-400/80 animate-spin opacity-80" style={{ animationDuration: '6s' }} />
+                      <span className="absolute -left-3.5 -top-3.5 h-7 w-7 rounded-full bg-emerald-500/5 border border-emerald-500/20 animate-pulse" />
+                      
+                      {/* Sidecar Proxy microsecond latency badge */}
+                      <span className="absolute -top-[24px] left-1/2 -translate-x-1/2 bg-emerald-950/95 text-emerald-400 border border-emerald-500/40 rounded px-1 py-0.25 text-[6px] font-mono font-bold whitespace-nowrap shadow-md uppercase tracking-wider z-30">
+                        Envoy +0.24ms
+                      </span>
+                    </>
                   )}
                   
                   <span className={`absolute inline-flex h-6 w-6 rounded-full -left-3 -top-3 ${isSelected ? 'bg-violet-500/30 animate-ping' : 'bg-transparent group-hover:bg-violet-500/10'}`} />
@@ -1135,6 +1210,18 @@ export const ClusterMap: React.FC = () => {
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                     <span>Inference Load: Low / Med / Peak</span>
                   </div>
+                  {serviceMeshEnabled && (
+                    <div className="mt-2 pt-1.5 border-t border-[#2e354f]/40 space-y-1">
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-bold font-mono text-[8px] tracking-wider">
+                        <Shield className="h-2 w-2 animate-pulse" />
+                        <span>mTLS TUNNELS: SECURE</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-emerald-500 font-mono text-[8px]">
+                        <span className="inline-block h-2 w-2 rounded-full border border-dashed border-emerald-400 animate-spin" />
+                        <span>Envoy Sidecar Proxies Active</span>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : activeMode === 'airbnb' ? (
                 <>
@@ -1193,7 +1280,7 @@ export const ClusterMap: React.FC = () => {
                 <Zap className="h-4 w-4 text-amber-400 animate-pulse" /> WAN Edge Routing Simulator
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 
                 {/* User Origin dropdown */}
                 <div className="space-y-1.5">
@@ -1206,7 +1293,7 @@ export const ClusterMap: React.FC = () => {
                       setSelectedTargetDC(null);
                       setActiveRoute(null);
                     }}
-                    className="w-full bg-[#0a0b12] border border-[#2e354f]/40 text-xs rounded-xl p-2 text-slate-200 outline-none focus:border-violet-500/50"
+                    className="w-full bg-[#0a0b12] border border-[#2e354f]/40 text-xs rounded-xl p-2 text-slate-200 outline-none focus:border-violet-500/50 h-9"
                   >
                     {USER_LOCATIONS.map(ul => (
                       <option key={ul.id} value={ul.id}>{ul.name}</option>
@@ -1217,29 +1304,54 @@ export const ClusterMap: React.FC = () => {
                 {/* Core Optimizer Policy */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Routing Policy</label>
-                  <div className="grid grid-cols-3 gap-1 bg-[#0a0b12] p-1 rounded-xl border border-[#2e354f]/40">
+                  <div className="grid grid-cols-3 gap-1 bg-[#0a0b12] p-1 rounded-xl border border-[#2e354f]/40 h-9">
                     <button
                       onClick={() => { setPolicy('latency'); setTelemetryLogs([]); }}
                       title="Lowest Latency Policy"
-                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${policy === 'latency' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`p-1 rounded-lg flex items-center justify-center transition-all cursor-pointer ${policy === 'latency' ? 'bg-violet-600 text-white font-bold shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                       <Clock className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => { setPolicy('cost'); setTelemetryLogs([]); }}
                       title="Lowest Unit Cost Policy"
-                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${policy === 'cost' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`p-1 rounded-lg flex items-center justify-center transition-all cursor-pointer ${policy === 'cost' ? 'bg-indigo-600 text-white font-bold shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                       <DollarSign className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => { setPolicy('carbon'); setTelemetryLogs([]); }}
                       title="Carbon-Aware Green Policy"
-                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${policy === 'carbon' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`p-1 rounded-lg flex items-center justify-center transition-all cursor-pointer ${policy === 'carbon' ? 'bg-emerald-600 text-white font-bold shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                       <Leaf className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                </div>
+
+                {/* Service Mesh Toggle */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Service Mesh</label>
+                  <button
+                    onClick={() => {
+                      setServiceMeshEnabled(!serviceMeshEnabled);
+                      setTelemetryLogs([]);
+                    }}
+                    title="Toggle Mutual TLS & Envoy Sidecar proxy latency"
+                    className={`w-full px-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer h-9 ${
+                      serviceMeshEnabled 
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-semibold shadow-[0_0_12px_rgba(16,185,129,0.08)]' 
+                        : 'bg-[#0a0b12] border-[#2e354f]/40 text-slate-400 hover:text-slate-200 hover:border-[#2e354f]/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Shield className={`h-3.5 w-3.5 ${serviceMeshEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+                      <span className="text-[11px]">mTLS Secure</span>
+                    </div>
+                    <div className={`w-7 h-4 rounded-full p-0.5 transition-all duration-300 ${serviceMeshEnabled ? 'bg-emerald-500 flex justify-end' : 'bg-slate-700 flex justify-start'}`}>
+                      <div className="w-3 h-3 bg-white rounded-full shadow-sm" />
+                    </div>
+                  </button>
                 </div>
 
                 {/* Context / Prompt Token size slider */}
@@ -1263,7 +1375,7 @@ export const ClusterMap: React.FC = () => {
                   <button
                     onClick={runSimulation}
                     disabled={simulating}
-                    className={`w-full py-2.5 px-4 font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`w-full py-2 px-4 font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer h-9 ${
                       simulating 
                         ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed' 
                         : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-600/10'
@@ -1703,15 +1815,45 @@ export const ClusterMap: React.FC = () => {
                               )}
                             </div>
 
+                            {serviceMeshEnabled && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[8px] font-mono">
+                                <span className="px-1.5 py-0.25 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded font-bold uppercase flex items-center gap-0.5">
+                                  <Lock className="h-1.5 w-1.5" /> mTLS
+                                </span>
+                                <span className="text-slate-400">Envoy Sidecar:</span>
+                                <span className="text-emerald-400 font-bold">{isUser ? '+0.32ms' : '+0.24ms'}</span>
+                                <span className="text-slate-600">|</span>
+                                <span className="text-slate-400 font-semibold text-[7px] text-sky-400">TLS_AES_256_GCM</span>
+                              </div>
+                            )}
+
                             {idx < activeHops.length - 1 && (
-                              <div className="text-[9px] text-indigo-400 font-mono italic flex items-center gap-1 pt-0.5">
-                                <ArrowRight className="h-2 w-2" /> Medium: {activeHops[idx + 1].linkType}
+                              <div className="text-[9px] text-indigo-400 font-mono italic flex items-center justify-between gap-1 pt-0.5">
+                                <span className="flex items-center gap-1">
+                                  <ArrowRight className="h-2 w-2" /> Medium: {activeHops[idx + 1].linkType}
+                                </span>
+                                {serviceMeshEnabled && (
+                                  <span className="text-[8px] font-extrabold text-emerald-400 font-mono bg-emerald-500/5 px-1 rounded border border-emerald-500/10">
+                                    mTLS Tunnel
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
                         );
                       })}
                     </div>
+
+                    {serviceMeshEnabled && (
+                      <div className="pt-2 border-t border-[#2e354f]/15 flex justify-between items-center text-[10px] font-mono text-emerald-400">
+                        <span className="flex items-center gap-1">
+                          <Shield className="h-2.5 w-2.5 animate-pulse" /> Sidecar Mesh Latency Overhead
+                        </span>
+                        <span className="font-bold">
+                          +{(0.32 + (activeHops.length - 1) * 0.24).toFixed(2)}ms
+                        </span>
+                      </div>
+                    )}
 
                     <div className="pt-2.5 border-t border-[#2e354f]/15 flex justify-between items-center text-[11px]">
                       <span className="text-slate-400 font-medium">Path Loss Target RTT</span>
