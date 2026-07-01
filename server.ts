@@ -304,6 +304,111 @@ Provide exceptionally professional, high-depth, causal, and direct systems answe
     }
   });
 
+  app.get("/api/auth/url", (req, res) => {
+    // Determine redirect URI based on the request origin or APP_URL
+    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/callback`;
+    
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'offline',
+      prompt: 'consent'
+    });
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    res.json({ url: authUrl });
+  });
+
+  app.get("/api/auth/callback", async (req, res) => {
+    const { code } = req.query;
+    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/callback`;
+    
+    try {
+      const response = await require('axios').post('https://oauth2.googleapis.com/token', {
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      });
+      
+      const { id_token } = response.data;
+      // Just returning a simple script to postMessage and close
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', token: '${id_token}' }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Authentication successful. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error("OAuth exchange error:", error.response?.data || error.message);
+      res.status(500).send("Authentication failed. Please ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set.");
+    }
+  });
+
+  // Kubernetes cluster connection storage
+  const activeK8sClients: Record<string, any> = {};
+
+  app.post("/api/k8s/connect", (req, res) => {
+    try {
+      const { kubeconfigString, token } = req.body;
+      const k8s = require('@kubernetes/client-node');
+      const kc = new k8s.KubeConfig();
+      if (kubeconfigString) {
+        kc.loadFromString(kubeconfigString);
+      } else {
+        kc.loadFromDefault();
+      }
+      
+      const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+      // Generate a simple session id for the cluster
+      const clusterId = "cluster_" + Math.random().toString(36).substring(2, 11);
+      activeK8sClients[clusterId] = k8sApi;
+      
+      res.json({ success: true, clusterId });
+    } catch (e: any) {
+      console.error("K8s connect error:", e);
+      res.status(500).json({ error: e.message || "Failed to load kubeconfig" });
+    }
+  });
+
+  app.get("/api/k8s/:clusterId/nodes", async (req, res) => {
+    try {
+      const { clusterId } = req.params;
+      const k8sApi = activeK8sClients[clusterId];
+      if (!k8sApi) return res.status(401).json({ error: "Not connected to a cluster" });
+
+      const k8sRes = await k8sApi.listNode();
+      res.json({ nodes: k8sRes.body.items });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to fetch nodes" });
+    }
+  });
+
+  app.get("/api/k8s/:clusterId/pods", async (req, res) => {
+    try {
+      const { clusterId } = req.params;
+      const k8sApi = activeK8sClients[clusterId];
+      if (!k8sApi) return res.status(401).json({ error: "Not connected to a cluster" });
+
+      const k8sRes = await k8sApi.listPodForAllNamespaces();
+      res.json({ pods: k8sRes.body.items });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to fetch pods" });
+    }
+  });
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
@@ -349,9 +454,9 @@ Provide exceptionally professional, high-depth, causal, and direct systems answe
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
           },
-          systemInstruction: "You are the ultimate Kubernetes AI Compute & GPU Platform SRE Architect. Keep your spoken responses concise, direct, professional, and clear. Help the user debug their Kubernetes compute doubts.",
+          systemInstruction: "You are the ultimate Kubernetes AI Compute & GPU Platform SRE Architect and dashboard tour helper. Keep your spoken responses concise, conversational, and clear. Help the user explore the dashboard tools (like the HPA Sandbox, Remote Cluster, GPU metrics) and debug their Kubernetes compute doubts. You have a friendly, expert persona.",
         },
         callbacks: {
           onmessage: (message) => {

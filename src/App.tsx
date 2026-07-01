@@ -1,49 +1,56 @@
-import React, { useState } from 'react';
-import { Tab } from './types';
-import { Navbar } from './components/Navbar';
-import { Overview } from './components/Overview';
-import { ArchitectureVisualizer } from './components/ArchitectureVisualizer';
-import { SchedulerSandbox } from './components/SchedulerSandbox';
-import { GPUStackExplorer } from './components/GPUStackExplorer';
-import { RequestLifecycleTracer } from './components/RequestLifecycleTracer';
-import { DebuggingSimulator } from './components/DebuggingSimulator';
-import { SreCalculator } from './components/SreCalculator';
-import { CloudComparer } from './components/CloudComparer';
-import { InterviewPrep } from './components/InterviewPrep';
-import { GeminiCoPilot } from './components/GeminiCoPilot';
-import { ClassroomMeet } from './components/ClassroomMeet';
-import { ClusterMap } from './components/ClusterMap';
-import { AirbnbPipelineSimulator } from './components/AirbnbPipelineSimulator';
+import React, { useState } from "react";
+import { Tab } from "./types";
+import { Navbar } from "./components/Navbar";
+import { Overview } from "./components/Overview";
+import { ArchitectureVisualizer } from "./components/ArchitectureVisualizer";
+import { SchedulerSandbox } from "./components/SchedulerSandbox";
+import { GPUStackExplorer } from "./components/GPUStackExplorer";
+import { RequestLifecycleTracer } from "./components/RequestLifecycleTracer";
+import { DebuggingSimulator } from "./components/DebuggingSimulator";
+import { SreCalculator } from "./components/SreCalculator";
+import { CloudComparer } from "./components/CloudComparer";
+import { InterviewPrep } from "./components/InterviewPrep";
+import { GeminiCoPilot } from "./components/GeminiCoPilot";
+import { ClassroomMeet } from "./components/ClassroomMeet";
+import { ClusterMap } from "./components/ClusterMap";
+import { AirbnbPipelineSimulator } from "./components/AirbnbPipelineSimulator";
+import { HPASandbox } from "./components/HPASandbox";
+import { RemoteCluster } from "./components/RemoteCluster";
+import { FloatingVoiceAgent } from "./components/FloatingVoiceAgent";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showCoPilot, setShowCoPilot] = useState<boolean>(false);
 
   const renderActiveTabContent = () => {
     switch (activeTab) {
-      case 'overview':
+      case "overview":
         return <Overview setActiveTab={setActiveTab} />;
-      case 'architecture':
+      case "architecture":
         return <ArchitectureVisualizer />;
-      case 'cluster-map':
+      case "cluster-map":
         return <ClusterMap />;
-      case 'airbnb-pipeline':
+      case "hpa-sandbox":
+        return <HPASandbox />;
+      case "remote-cluster":
+        return <RemoteCluster />;
+      case "airbnb-pipeline":
         return <AirbnbPipelineSimulator />;
-      case 'scheduler':
+      case "scheduler":
         return <SchedulerSandbox />;
-      case 'gpu-stack':
+      case "gpu-stack":
         return <GPUStackExplorer />;
-      case 'lifecycle':
+      case "lifecycle":
         return <RequestLifecycleTracer />;
-      case 'troubleshooting':
+      case "troubleshooting":
         return <DebuggingSimulator />;
-      case 'calculator':
+      case "calculator":
         return <SreCalculator />;
-      case 'comparison':
+      case "comparison":
         return <CloudComparer />;
-      case 'qa':
+      case "qa":
         return <InterviewPrep />;
-      case 'classroom-meet':
+      case "classroom-meet":
         return <ClassroomMeet />;
       default:
         return <Overview setActiveTab={setActiveTab} />;
@@ -79,8 +86,13 @@ export default function App() {
 
       {/* Humble Footer */}
       <footer className="border-t border-[#1a1e35] bg-[#080a11] px-6 py-4 text-center text-xs text-slate-500 font-sans flex items-center justify-center gap-2">
-        <span>© 2026 Kubernetes AI Compute Masterclass. Designed with high performance for SRE Architects.</span>
+        <span>
+          © 2026 Kubernetes AI Compute Masterclass. Designed with high
+          performance for SRE Architects.
+        </span>
       </footer>
+
+      <FloatingVoiceAgent />
     </div>
   );
 }
