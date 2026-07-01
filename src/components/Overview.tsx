@@ -26,7 +26,7 @@ export const Overview: React.FC<OverviewProps> = ({ setActiveTab }) => {
             Welcome, Marcus. This interactive platform is tailored specifically to your upcoming 
             <strong> <HoverHint term="Kubernetes"/> Engineer (AI Compute)</strong> interview at <strong>Airbnb</strong>. It connects your exceptional 
             background as a <strong>Google Staff <HoverHint term="SRE"/> (Borg / <HoverHint term="Scheduler"/> internals)</strong> and <strong>Globo high-concurrency engineer</strong> 
-            with modern <HoverHint term="GPU"/> orchestration, vLLM serving, and low-latency AI platform operations.
+            with modern <HoverHint term="GPU"/> orchestration, <HoverHint term="vLLM"/> serving, and low-latency AI platform operations.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button

@@ -17,6 +17,7 @@ const HINTS: Record<string, string> = {
   'SRE': 'Site Reliability Engineering. Applies software engineering to operations.',
   'Namespace': 'Provides a mechanism for isolating groups of resources within a single cluster.',
   'Ingress': 'Manages external access to the services in a cluster, typically HTTP.',
+  'vLLM': 'A high-throughput and memory-efficient LLM serving engine with PagedAttention.',
 };
 
 export const HoverHint: React.FC<{ term: string; children?: React.ReactNode }> = ({ term, children }) => {
@@ -33,11 +34,11 @@ export const HoverHint: React.FC<{ term: string; children?: React.ReactNode }> =
         {children || term}
       </span>
       {show && (
-        <div className="absolute z-[9999] bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900 border border-emerald-500/30 rounded-lg p-3 shadow-xl pointer-events-none animate-fade-in text-left">
-          <div className="text-[10px] font-mono text-emerald-400 uppercase font-bold mb-1">{term}</div>
-          <div className="text-xs text-slate-300 leading-relaxed font-sans">{hintText}</div>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900 border-t-emerald-500/30"></div>
-        </div>
+        <span className="block absolute z-[9999] bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900 border border-emerald-500/30 rounded-lg p-3 shadow-xl pointer-events-none animate-fade-in text-left">
+          <span className="block text-[10px] font-mono text-emerald-400 uppercase font-bold mb-1">{term}</span>
+          <span className="block text-xs text-slate-300 leading-relaxed font-sans">{hintText}</span>
+          <span className="block absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900 border-t-emerald-500/30"></span>
+        </span>
       )}
     </span>
   );
